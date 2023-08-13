@@ -4,7 +4,8 @@ import curses
 import threading
 import time
 import os
-
+import audioplayer
+import random
 
 config = cfg.Config("config.json")
 songs = db.Database("songs", logging=False)
@@ -120,10 +121,85 @@ class keylistener_engine:
 #pages
 
 class MusicPlayerPage:
-    def render(sc):
-        pass
+    status = {"playing": False, "paused": False}
+    action = None
+    song = None
+    metadata = {}
     
-    def process_key(char): pass
+    def render(sc):
+        metadata = MusicPlayerPage.metadata
+        controls = "[Space] Pause"
+        line2 = f"By {metadata.get('artist', 'Artist')} | {metadata.get('album', 'Album')}"
+        sc.addstr(config.screenY-1, centerX(controls), controls)
+        sc.addstr(centerY(), centerX(metadata.get("title", "Title")), metadata.get("title", "Title"))
+        sc.addstr(centerY()+1, centerX(line2), line2)
+        
+        volume = "─"*int(config.volume)
+        if config.volume == 0: volume += "🔇"
+        if config.volume in [1,2,3]: volume += "🔈"
+        if config.volume in [4,5,6,7]: volume += "🔉"
+        if config.volume in [8,9,10]: volume += "🔊"
+        sc.addstr(config.screenY-1, 0, volume)
+        
+    
+    def process_key(char):
+        if not MusicPlayerPage.status["playing"]:
+            MusicPlayerPage.song = f"songs/{random.choice( os.listdir('songs') )}"
+            threading.Thread( target=MusicPlayerPage.play ).start()
+            MusicPlayerPage.status["playing"] = True
+        
+        match char:
+            case 32:
+                if MusicPlayerPage.status["paused"]:
+                    MusicPlayerPage.status["paused"] = False
+                    MusicPlayerPage.action = "unpause"
+                    message("Playing")
+                else:
+                    MusicPlayerPage.status["paused"] = True
+                    MusicPlayerPage.action = "pause"
+                    message("Paused")
+            
+            case 259:
+                if config.volume + 1 > 10: return
+                config.volume += 1
+                MusicPlayerPage.action = "volume"
+            case 258:
+                if config.volume - 1 < 0: return
+                config.volume -= 1
+                MusicPlayerPage.action = "volume"
+                
+        
+        
+        
+        
+    
+    def play():
+        path = MusicPlayerPage.song
+        if path == None:
+            message("No song selected")
+    
+        player = audioplayer.AudioPlayer(path, config.volume)
+        player.play()
+        MusicPlayerPage.metadata = player.get_metadata()
+        while True:
+            match MusicPlayerPage.action:
+                case "pause":
+                    player.pause()
+                case "unpause":
+                    player.unpause()
+                
+                case "volume":
+                    player.set_volume(config.volume/10)
+                    
+                
+                case "stop":
+                    player.stop()
+                    MusicPlayerPage.status["playing"] = False
+                    return
+                
+            MusicPlayerPage.action = None
+    
+        
 
 class SettingsPage:
     options = [
@@ -131,6 +207,7 @@ class SettingsPage:
         item(label="Screen X", value=config.screenX, key="screenX", type="int", intmin=75, intmax=1000, description="Width of screen (Warning: Changing this may result in visual glitches)"),
         item(label="Screen Y", value=config.screenY, key="screenY", type="int", intmin=12, intmax=1000, description="Height of screen (Warning: Changing this may result in visual glitches)"),
         item(label="Exit prompt", value=config.exitPrompt, key="exitPrompt", type="bool", description="Asks for confirmation before exiting"),
+        item(label="Volume", value=config.volume, key="volume", type="int", intmin=0, intmax=10, description="Change audio volume"),
         
         item(label="Actions", type="title"),
         item(label="Save changes", type="button", action=config.save, description="Saves the settings to a file"),
@@ -250,8 +327,8 @@ class current:
 
 categories = [
         category("Music Player", "E", [101, 69], MusicPlayerPage),
-        category("Songs", "T", [116, 84], SongsPage),
-        category("Playlists", "R", [114, 82], PlaylistsPage),
+        category("Songs", "R", [114, 82], SongsPage),
+        category("Playlists", "T", [116, 84],PlaylistsPage),
         category("Settings", "S", [115, 83], SettingsPage),
         category("Exit", "ESC", [27], ExitPage)
     ]
