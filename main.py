@@ -471,7 +471,6 @@ class SongsPage:
         
         if char in [99, 67]: #C
             song_url = simpledialog.askstring("AudioWave", "Spotify URL")
-            spotify_download(song_url)
         if char in [118,86]: #V
             file = "".join(random.choice(string.ascii_letters))
             

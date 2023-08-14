@@ -6,5 +6,7 @@
     "volume": 20,
     "welcomeScreen": false,
     "progressBarIcon": "\u25c9",
-    "playerOnSelect": true
+    "playerOnSelect": true,
+    "spotifyClientId": "",
+    "spotifyClientSecret": ""
 }
