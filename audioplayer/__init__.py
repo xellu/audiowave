@@ -7,6 +7,7 @@ class AudioPlayer:
         
         pygame.init()
         self.volume = volume
+        self.set_volume(volume)
         
     def load_audio(self, file_path):
         self.path = file_path

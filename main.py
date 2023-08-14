@@ -6,9 +6,10 @@ import time
 import os
 import audioplayer
 import random
+import mutagen
 
 config = cfg.Config("config.json")
-songs = db.Database("songs", logging=False)
+songsdb = db.Database("songs", logging=False)
 
 def centerX(string):
     return int( config.screenX / 2 ) - int( len(string) /2 )
@@ -19,6 +20,12 @@ def centerY():
 def message(text = ""):
     current.message = text
     print(text)
+    
+def msgpage(text = "", return_page = None):
+    MessagePage.msg = text
+    MessagePage.return_page = return_page
+    current.page = MessagePage
+
 
 class utils:
     def reload_config_from_settings():
@@ -32,6 +39,9 @@ class utils:
         minutes = seconds // 60
         remaining_seconds = seconds % 60
         return f"{int(minutes)}:{int(remaining_seconds):02d}"
+
+    def get_duration(path):
+        return mutagen.File(path).info.length
 
 
 class category:
@@ -96,6 +106,8 @@ class render_engine:
         sc.addstr(1, config.screenX-len("AudioWave  "), "AudioWave", curses.A_REVERSE)
             
         #RENDER PAGE
+        if current.page == None: msgpage(f"CRASH PREVENTED: current.page set to 'None'", WelcomePage)
+            
         current.page.render(sc)
         time.sleep(0.01)
         
@@ -119,11 +131,14 @@ class keylistener_engine:
             print("KEY PRESS: ",char)
             
             #process key events for current page
-            current.page.process_key(char)
-            
+            try:
+                current.page.process_key(char)
+            except Exception as error:
+                print(f"KEY PROCESSING FAILED: {error}")
+                msgpage(f"KEY PROCESSING FAILED: {error}") 
             #switch category page    
             
-            if char == 9: #tabbing
+            if char == 9: #tab
                 current_category_index = (current_category_index + 1) % (len(categories)-1)
                 current.page = categories[current_category_index].render_engine
                 
@@ -139,27 +154,33 @@ class keylistener_engine:
 #pages
 
 class MusicPlayerPage:
-    status = item(duration=0, duration_last=0, paused=False)
+    status = item(duration=0, duration_last=time.time(), paused=False)
     player = None
+    queue = []
     
     def render(sc):
         player = MusicPlayerPage.player
         if player == None: return
         if player.path == None: metadata = {}
         else: metadata = MusicPlayerPage.player.get_metadata()
-        
+    
         status = MusicPlayerPage.status
+
+        
+        if status.duration >= metadata.get("duration", 0):
+            if len(MusicPlayerPage.queue) > 0: MusicPlayerPage.playsong(MusicPlayerPage.queue[0].path)
+        
         if status.paused == False:
             status.duration += time.time() - status.duration_last
         status.duration_last = time.time()
-        
         
         if player.path == None:
             sc.addstr(centerY(), centerX("No track selected"), "No track selected")
             return
         
-        line2 = f"By {metadata.get('artist', 'Artist')}"
-        sc.addstr(centerY(), centerX(metadata.get("title", "Title")), metadata.get("title", "Title"))
+        song = songsdb.find("path", player.path)
+        line2 = f"By {song.artist}"
+        sc.addstr(centerY(), centerX(song.title), song.title)
         sc.addstr(centerY()+1, centerX(line2), line2)
         
         volume = "─"*int(config.volume) + config.progressBarIcon
@@ -178,7 +199,7 @@ class MusicPlayerPage:
         if player == None: message('Player not loaded')
         
         match char:
-            case 32:
+            case 32: #space
                 if MusicPlayerPage.status.paused:
                     MusicPlayerPage.status.paused = False
                     player.unpause()
@@ -188,16 +209,14 @@ class MusicPlayerPage:
                     player.pause()
                     message("Paused")
             
-            case 259:
+            case 259: #up
                 if config.volume + 1 > 20: return
                 config.volume += 1
                 player.set_volume(config.volume/20)
-            case 258:
+            case 258: #down
                 if config.volume - 1 < 0: return
                 config.volume -= 1
                 player.set_volume(config.volume/20)
-            case 10:
-                MusicPlayerPage.playsong("songs/"+random.choice(os.listdir("songs")))
                 
     def playsong(path):
         player = MusicPlayerPage.player
@@ -219,17 +238,17 @@ class MusicPlayerPage:
         player = MusicPlayerPage.player
         if player.get_volume() != config.volume/20:
             player.set_volume(config.volume/20)
-    
         
 
 class SettingsPage:
     options = [
         item(label="Settings", type="title"),
         item(label="Screen X", value=config.screenX, key="screenX", type="int", intmin=75, intmax=1000, description="Width of screen (Warning: Changing this may result in visual glitches)"),
-        item(label="Screen Y", value=config.screenY, key="screenY", type="int", intmin=15, intmax=1000, description="Height of screen (Warning: Changing this may result in visual glitches)"),
+        item(label="Screen Y", value=config.screenY, key="screenY", type="int", intmin=20, intmax=1000, description="Height of screen (Warning: Changing this may result in visual glitches)"),
         item(label="Exit prompt", value=config.exitPrompt, key="exitPrompt", type="bool", description="Asks for confirmation before exiting"),
         item(label="Volume", value=config.volume, key="volume", type="int", intmin=0, intmax=20, description="Change audio volume"),
         item(label="Welcome screen", value=config.welcomeScreen, key="welcomeScreen", type="bool", description="Shows a welcome screen on startup"),
+        item(label="Player on select", value=config.playerOnSelect, key="playerOnSelect", type="bool", description="Opens music player when a song or playlist is selected"),
         
         item(label="Actions", type="title"),
         item(label="Save changes", type="button", action=config.save, description="Saves the settings to a file"),
@@ -261,7 +280,7 @@ class SettingsPage:
     
     def process_key(char):
         match char:
-            case 258:
+            case 258: #up
                 if len(SettingsPage.options) <= SettingsPage.selected+1:
                     return
                 SettingsPage.selected += 1
@@ -269,7 +288,7 @@ class SettingsPage:
                 if obj.type == "title" and SettingsPage.selected+2 <= len(SettingsPage.options):
                     SettingsPage.selected += 1
             
-            case 259:
+            case 259: #down
                 if SettingsPage.selected - 1 < 0:
                     return
                 SettingsPage.selected -= 1
@@ -279,14 +298,14 @@ class SettingsPage:
                 elif obj.type == "title" and SettingsPage.options.index(obj) == 0:
                     SettingsPage.selected += 1
             
-            case 260:
+            case 260: #left
                 option = SettingsPage.options[SettingsPage.selected]
                 if option.type != "int": return
                 if option.value - 1 < option.intmin: return
                 option.value -= 1
                 config.write(option.key, option.value)
             
-            case 261:
+            case 261: #right
                 option = SettingsPage.options[SettingsPage.selected]
                 if option.type != "int": return
                 if option.value + 1 > option.intmax: return
@@ -294,7 +313,7 @@ class SettingsPage:
                 option.value += 1
                 config.write(option.key, option.value)
             
-            case 10:
+            case 10: #enter
                 option = SettingsPage.options[SettingsPage.selected]
                 if option.type == "bool":
                     if option.value: option.value = False
@@ -304,17 +323,94 @@ class SettingsPage:
                     
                 elif option.type == "button":
                     option.action()
-        
+                    
                 
-            
-    
 class SongsPage:
+    page = 1
+    selected = 0
+    results_per_page = 10
+    
     def render(sc):
-        controls = "[X] Add song   [C] Add song from spotify   [V] Add song from youtube"
-        sc.addstr(config.screenY-1, centerX(controls), controls)
+        results = SongsPage.get_results()
+        controls1 = "[A] Previous page   [D] Next page               [Enter] Play song        "
+        controls2 = "[F] Not yet         [G] Delete song             [Space] Add song to queue"
+        controls3 = "[X] Add song        [C] Add song from spotify   [V] Add song from youtube"
+        sc.addstr(config.screenY-3, centerX(controls1), controls1)
+        sc.addstr(config.screenY-2, centerX(controls2), controls2)
+        sc.addstr(config.screenY-1, centerX(controls3), controls3)
+        
+        if results.error: sc.addstr(centerY(), centerX("Page not found"), "Page not found")
+        stats = f"Page: {SongsPage.page} - Showing {len(results.content)} out of {len(songsdb.content)} results"
+        sc.addstr(3, centerX(stats), stats)
+        
+        sc.addstr(5,5, "TITLE", curses.A_REVERSE)
+        sc.addstr(5,25, "ARTIST", curses.A_REVERSE)
+        sc.addstr(5,40, "ALBUM", curses.A_REVERSE)
+        sc.addstr(5,60, "DURATION", curses.A_REVERSE)
+        for x in range(len(results.content)):
+            if results.content.index( results.content[x] ) == SongsPage.selected: highlight = curses.A_REVERSE
+            else: highlight = curses.A_BOLD
+                
+            r = results.content[x]
+            sc.addstr(6+x,5, r.title, highlight)
+            sc.addstr(6+x,25, r.artist, highlight)
+            sc.addstr(6+x,40, r.album, highlight)
+            if os.path.exists(r.path):
+                sc.addstr(6+x,60, utils.to_minutes( utils.get_duration(r.path) ), highlight)
+            else: sc.addstr(6+x,60, "MOVED/DELETED", curses.COLOR_RED)
+            
+        
+    def get_results(page=None):
+        if page == None: page = SongsPage.page
+        
+        results_per_page = SongsPage.results_per_page
+        
+        cl = songsdb.content
+        pfac = results_per_page*(SongsPage.page-1)
+        try: cl[pfac]
+        except IndexError: return item(content=[], error=True)
+        
+        output = []
+        for x in range(results_per_page):
+            p = pfac+x
+            try: c = cl[p]
+            except IndexError: break
+            output.append(c)
+        
+        return item(content=output, error=False)
     
-    def process_key(char): pass
-    
+    def process_key(char):
+        results = SongsPage.get_results().content
+        selected = SongsPage.selected
+        if char == 258: #Down
+            if SongsPage.selected + 1 >= len(results): return
+            SongsPage.selected += 1
+        if char == 259: #Up
+            if SongsPage.selected -1 < 0: return
+            SongsPage.selected -= 1
+        
+        if char in [97, 67]: #A
+            if SongsPage.page - 1 <= 0: return
+            SongsPage.page -= 1
+            SongsPage.selected = 0
+        if char in [100, 68]: #D
+            if SongsPage.get_results(SongsPage.page + 1).error: return
+            SongsPage.page += 1
+            SongsPage.selected = 0
+        if char in [102, 70]: #F
+            msgpage("Not yet", SongsPage)
+        if char in [103, 71]: #G
+            try: song = results[selected]
+            except IndexError: return
+            
+            songsdb.delete(song)
+        if char == 32: #Space
+            MusicPlayerPage.queue.append(results[selected])
+        if char in [10, 459]: #Enter
+            MusicPlayerPage.playsong(results[selected].path)
+            
+
+            
 class PlaylistsPage:
     def render(sc):
         msg = "Playlists aren't working yet."
@@ -349,12 +445,23 @@ class ExitPage:
         sc.addstr(centerY()+2, centerX(msg3), msg3)
     
     def process_key(char):
-        if char == 27:
+        if char == 27: #escape
             current.page = WelcomePage if config.welcomeScreen else MusicPlayerPage
-        elif char in [10, 459]:
+        elif char in [10, 459]: #enter
             save()
             os._exit(0)
     
+
+class MessagePage:
+    msg = "No message"
+    return_page = WelcomePage
+    def render(sc):
+        msg = MessagePage.msg
+        sc.addstr(centerY(), centerX(msg), msg)
+        sc.addstr(config.screenY-1, centerX("Press any key to return"), "Press any key to return")
+        
+    def process_key(char):
+        current.page = MessagePage.return_page
 #----
 
 class current:
@@ -373,7 +480,7 @@ categories = [
 #----
 
 def save():
-    songs.save()
+    songsdb.save()
     config.save()
     MusicPlayerPage.action = item(action="exit")
     
