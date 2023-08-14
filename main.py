@@ -18,6 +18,7 @@ def centerY():
 
 def message(text = ""):
     current.message = text
+    print(text)
 
 class utils:
     def reload_config_from_settings():
@@ -59,12 +60,15 @@ class render_engine:
         current.screen = sc
         while self.active:
             try:
-                sc.erase()
                 self.render(sc)
-            except Exception as error: sc.addstr(3,3, f"RENDER ERROR: {error}")
+            except Exception as error:
+                sc.addstr(0,0, f"RENDER ERROR: {error}", curses.A_REVERSE)
+                print(f"RENDER ERROR: {error}")
+
             sc.refresh()
             
     def render(self, sc):
+        sc.erase()
         
         #PAGE LIST 
         sc.addstr(0,0, " "*config.screenX, curses.A_REVERSE)
@@ -93,6 +97,7 @@ class render_engine:
             
         #RENDER PAGE
         current.page.render(sc)
+        time.sleep(0.01)
         
         
             
@@ -115,11 +120,12 @@ class keylistener_engine:
             #process key events for current page
             current.page.process_key(char)
             
-            #change page
+            #switch category page    
             for category in categories:
                 if char in category.shortcut_int:
                     message()
                     current.page = category.render_engine
+                
                     
             
 #--------
@@ -299,7 +305,8 @@ class SongsPage:
     
 class PlaylistsPage:
     def render(sc):
-        pass
+        msg = "Playlists aren't working yet."
+        sc.addstr(centerY(), centerX(msg), msg)
     
     def process_key(char): pass
 
