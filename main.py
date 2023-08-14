@@ -121,83 +121,76 @@ class keylistener_engine:
 #pages
 
 class MusicPlayerPage:
-    status = {"playing": False, "paused": False}
-    action = None
-    song = None
-    metadata = {}
+    status = item(duration=0, duration_last=0, paused=False)
+    player = None
     
     def render(sc):
-        metadata = MusicPlayerPage.metadata
-        controls = "[Space] Pause"
-        line2 = f"By {metadata.get('artist', 'Artist')} | {metadata.get('album', 'Album')}"
-        sc.addstr(config.screenY-1, centerX(controls), controls)
+        if MusicPlayerPage.player == None or MusicPlayerPage.player.path == None: metadata = {}
+        else: metadata = MusicPlayerPage.player.get_metadata()
+        
+        status = MusicPlayerPage.status
+        if status.paused == False:
+            status.duration += time.time() - status.duration_last
+        status.duration_last = time.time()
+        message(str(int(status.duration)) + "s elapsed")
+        
+        controls = "[Space] Pause   [Enter] Random song"
+        line2 = f"By {metadata.get('artist', 'Artist')}"
+        #sc.addstr(config.screenY-1, centerX(controls), controls)
         sc.addstr(centerY(), centerX(metadata.get("title", "Title")), metadata.get("title", "Title"))
         sc.addstr(centerY()+1, centerX(line2), line2)
         
-        volume = "─"*int(config.volume)
-        if config.volume == 0: volume += "🔇"
-        if config.volume in [1,2,3]: volume += "🔈"
-        if config.volume in [4,5,6,7]: volume += "🔉"
-        if config.volume in [8,9,10]: volume += "🔊"
+        volume = "─"*int(config.volume) + config.progressBarIcon
         sc.addstr(config.screenY-1, 0, volume)
+                        
+        if metadata.get("duration") != None:
+            song_progress = "─" * int( (status.duration / metadata.get("duration", 0)) * 50 ) + config.progressBarIcon + "─" * int( 50 - (status.duration / metadata.get("duration", 0)) * 50 )
+            sc.addstr(centerY()+3, centerX(song_progress), song_progress)
+            
         
+
     
     def process_key(char):
-        if not MusicPlayerPage.status["playing"]:
-            MusicPlayerPage.song = f"songs/{random.choice( os.listdir('songs') )}"
-            threading.Thread( target=MusicPlayerPage.play ).start()
-            MusicPlayerPage.status["playing"] = True
+        player = MusicPlayerPage.player
+        if player == None: message('Player not loaded')
         
         match char:
             case 32:
-                if MusicPlayerPage.status["paused"]:
-                    MusicPlayerPage.status["paused"] = False
-                    MusicPlayerPage.action = "unpause"
+                if MusicPlayerPage.status.paused:
+                    MusicPlayerPage.status.paused = False
+                    player.unpause()
                     message("Playing")
                 else:
-                    MusicPlayerPage.status["paused"] = True
-                    MusicPlayerPage.action = "pause"
+                    MusicPlayerPage.status.paused = True
+                    player.pause()
                     message("Paused")
             
             case 259:
                 if config.volume + 1 > 10: return
                 config.volume += 1
-                MusicPlayerPage.action = "volume"
+                player.set_volume(config.volume/10)
             case 258:
                 if config.volume - 1 < 0: return
                 config.volume -= 1
-                MusicPlayerPage.action = "volume"
+                player.set_volume(config.volume/10)
+            case 10:
+                MusicPlayerPage.playsong("songs/"+random.choice(os.listdir("songs")))
                 
+    def playsong(path):
+        player = MusicPlayerPage.player
+        if player == None: return
         
+        if player.path != None: player.stop()
+        player.load_audio(path)
+        player.play()
         
-        
-        
+        MusicPlayerPage.status.paused = False
+        MusicPlayerPage.status.duration = 0
+        MusicPlayerPage.status.duration_last = time.time()
     
     def play():
-        path = MusicPlayerPage.song
-        if path == None:
-            message("No song selected")
-    
-        player = audioplayer.AudioPlayer(path, config.volume)
-        player.play()
-        MusicPlayerPage.metadata = player.get_metadata()
-        while True:
-            match MusicPlayerPage.action:
-                case "pause":
-                    player.pause()
-                case "unpause":
-                    player.unpause()
-                
-                case "volume":
-                    player.set_volume(config.volume/10)
-                    
-                
-                case "stop":
-                    player.stop()
-                    MusicPlayerPage.status["playing"] = False
-                    return
-                
-            MusicPlayerPage.action = None
+        player = audioplayer.AudioPlayer(config.volume)
+        MusicPlayerPage.player = player
     
         
 
@@ -338,6 +331,7 @@ categories = [
 def save():
     songs.save()
     config.save()
+    MusicPlayerPage.action = item(action="exit")
     
     render.deactivate()
 
@@ -346,6 +340,7 @@ listener = keylistener_engine()
 
 threading.Thread(target=render.start).start()
 threading.Thread(target=listener.start).start()
+threading.Thread(target=MusicPlayerPage.play).start()
 
 while True:
     try:

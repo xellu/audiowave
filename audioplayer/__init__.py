@@ -2,17 +2,18 @@ import pygame
 import mutagen 
 
 class AudioPlayer:
-    def __init__(self, path, volume):
-        self.path = path
+    def __init__(self, volume):
+        self.path = None
         
         pygame.init()
         self.volume = volume
-        self.load_audio(path)
         
     def load_audio(self, file_path):
+        self.path = file_path
         pygame.mixer.music.load(file_path)
 
     def play(self):
+        if self.path == None: return
         pygame.mixer.music.play()
 
     def pause(self):
@@ -22,6 +23,7 @@ class AudioPlayer:
         pygame.mixer.music.unpause()
 
     def stop(self):
+        if self.path == None: return
         pygame.mixer.music.stop()
 
     def set_volume(self, volume):
@@ -38,9 +40,9 @@ class AudioPlayer:
     def get_metadata(self):
         audio = mutagen.File(self.path)
         metadata = {
-            'title': audio.get('title', 'Unknown Title'),
-            'artist': audio.get('artist', 'Unknown Artist'),
-            'album': audio.get('album', 'Unknown Album'),
+            'title': audio.get('title', 'Title'),
+            'artist': audio.get('artist', 'Artist'),
+            'album': audio.get('album', 'Album'),
             'duration': audio.info.length
         }
         return metadata

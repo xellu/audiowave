@@ -3,5 +3,6 @@
     "screenY": 28,
     "timeformat": "%H:%M:%S",
     "exitPrompt": false,
-    "volume": 10
+    "volume": 0,
+    "progressBarIcon": "\u25c9"
 }
