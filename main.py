@@ -1,12 +1,17 @@
+print("[AudioWave] Application is booting up...")
+
 from dataforge import config as cfg
 from dataforge import database as db
 import curses
 import threading
 import time
 import os
-import audioplayer
 import random
+import string
 import mutagen
+import tkinter as tk
+from tkinter import simpledialog
+import audioplayer
 
 version = "1.0.0"
 config = cfg.Config("config.json")
@@ -26,7 +31,6 @@ def msgpage(text = "", return_page = None):
     MessagePage.msg = text
     MessagePage.return_page = return_page
     current.page = MessagePage
-
 
 class utils:
     def reload_config_from_settings():
@@ -98,9 +102,15 @@ class render_engine:
         sc.addstr(2,0, " "*config.screenX, curses.A_REVERSE)
         sc.addstr(config.screenY,0, " "*config.screenX, curses.A_REVERSE)
         
-        sc.addstr(config.screenY,1, time.strftime(config.timeformat, time.localtime()), curses.A_REVERSE)
         sc.addstr(config.screenY,config.screenX-len(current.message)-1, current.message, curses.A_REVERSE)
         
+        #VOLUME BAR
+        volume = f"{str(int( (config.volume/20)*100 ))}% "
+        if config.volume == 0: volume += "🔇"
+        else: volume += "─"*int(config.volume/2) + config.progressBarIcon
+        sc.addstr(config.screenY, 0, volume, curses.A_REVERSE)
+        
+        #CATEGORY BAR
         category_offset = 1
         for i in range(len(categories)):
             category = categories[i]
@@ -118,7 +128,7 @@ class render_engine:
         sc.addstr(1, config.screenX-len("AudioWave  "), "AudioWave", curses.A_REVERSE)
             
         #RENDER PAGE
-        if current.page == None: msgpage(f"CRASH PREVENTED: current.page set to 'None'", WelcomePage)
+        if current.page == None: msgpage(f"CRASH PREVENTED: current.page set from {None} to {WelcomePage}", WelcomePage)
             
         current.page.render(sc)
         time.sleep(0.01)
@@ -200,8 +210,6 @@ class MusicPlayerPage:
         sc.addstr(centerY(), centerX(song.title), song.title)
         sc.addstr(centerY()+1, centerX(line2), line2)
         
-        volume = "─"*int(config.volume) + config.progressBarIcon
-        sc.addstr(config.screenY-1, 0, volume)
                         
         if metadata.get("duration") != None:
             elapsed = int( (status.duration / metadata.get("duration", 0)) * 50 )
@@ -429,7 +437,7 @@ class SongsPage:
             SongsPage.selected = 0
         if char in [102, 70]: #F
             msgpage("Not yet", SongsPage)
-        if char in [103, 71]: #G
+        if char in [103, 71, 330]: #G/Del
             try: song = results[selected]
             except IndexError: return
             
@@ -440,8 +448,36 @@ class SongsPage:
             MusicPlayerPage.playsong(results[selected].path)
             if config.playerOnSelect:
                 current.page = MusicPlayerPage
-            
+        
+        if char in [120, 88]: #X
+            path = simpledialog.askstring("AudioWave", "Path to mp3 file")
+            if path == None:
+                message("Cancelled")
+                return
+            if os.path.isfile(path) == False:
+                message("Audio file not found")
+                return
+            if path.endswith(".mp3") == False:
+                message("Unsupported file format")
+                return
 
+            title = simpledialog.askstring("AudioWave", "Title")
+            artist = simpledialog.askstring("AudioWave", "Artist")
+            album = simpledialog.askstring("AudioWave", "Album")
+            
+            song = db.Item(title=str(title), artist=str(artist), album=str(album), path=path)
+            songsdb.add(song)
+            message("Song added")
+        
+        if char in [99, 67]: #C
+            song_url = simpledialog.askstring("AudioWave", "Spotify URL")
+            spotify_download(song_url)
+        if char in [118,86]: #V
+            file = "".join(random.choice(string.ascii_letters))
+            
+           
+                
+            
             
 class PlaylistsPage:
     def render(sc):
@@ -527,22 +563,23 @@ class KeybindsPage:
 class InfoPage:
     def render(sc):
         sc.addstr(5,5, "DEVELOPER", curses.A_REVERSE)
-        sc.addstr(5,15, "Xellu")
+        sc.addstr(5,25, "Xellu")
         
         sc.addstr(6,5, "GITHUB", curses.A_REVERSE)
-        sc.addstr(6,15, "https://github.com/xellu/audiowave")
+        sc.addstr(6,25, "https://github.com/xellu/audiowave")
         
         sc.addstr(7,5, "VERSION", curses.A_REVERSE)
-        sc.addstr(7,15, version)
-        
-
+        sc.addstr(7,25, version)
+    
 
     def process_key(char):
         current.page = SettingsPage
 
 class ExitPage:
     def render(sc):
-        if not config.exitPrompt: os._exit(0)
+        if not config.exitPrompt:
+            save()
+            os._exit(0)
         msg1 = "Are you sure you want to exit?"
         msg2 = "[Enter]  Yes"
         msg3 = "[ESC]    No "
