@@ -8,6 +8,7 @@ import audioplayer
 import random
 import mutagen
 
+version = "1.0.0"
 config = cfg.Config("config.json")
 songsdb = db.Database("songs", logging=False)
 
@@ -50,6 +51,9 @@ class utils:
         
     def open_keybind_page():
         current.page = KeybindsPage
+    
+    def open_info_page():
+        current.page = InfoPage
 
 
 class category:
@@ -278,7 +282,8 @@ class SettingsPage:
         item(label="Save changes", type="button", action=config.save, description="Saves the settings to a file"),
         item(label="Revert changes", type="button", action=utils.reload_config_from_settings, description="Reloads config file. Beware, any unsaved changes will be lost"),
         item(label="Update volume", type="button", action=MusicPlayerPage.update_volume, description="Updates volume for the music player"),
-        item(label="Keybinds", type="button", action=utils.open_keybind_page, description="List of all keybinds. not changable")
+        item(label="Keybinds", type="button", action=utils.open_keybind_page, description="List of all keybinds"),
+        item(label="About", type="button", action=utils.open_info_page, description="Information about AudioWave application")
     ]
     selected = 1
     
@@ -519,6 +524,21 @@ class KeybindsPage:
                 KeybindsPage.index = 0
             else: KeybindsPage.index += 1
 
+class InfoPage:
+    def render(sc):
+        sc.addstr(5,5, "DEVELOPER", curses.A_REVERSE)
+        sc.addstr(5,15, "Xellu")
+        
+        sc.addstr(6,5, "GITHUB", curses.A_REVERSE)
+        sc.addstr(6,15, "https://github.com/xellu/audiowave")
+        
+        sc.addstr(7,5, "VERSION", curses.A_REVERSE)
+        sc.addstr(7,15, version)
+        
+
+
+    def process_key(char):
+        current.page = SettingsPage
 
 class ExitPage:
     def render(sc):
