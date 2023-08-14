@@ -3,7 +3,7 @@
     "screenY": 28,
     "timeformat": "%H:%M:%S",
     "exitPrompt": false,
-    "volume": 2,
+    "volume": 0,
     "welcomeScreen": false,
     "progressBarIcon": "\u25c9",
     "playerOnSelect": true

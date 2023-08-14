@@ -48,6 +48,8 @@ class utils:
             element = arr[index]
             return element
         
+    def open_keybind_page():
+        current.page = KeybindsPage
 
 
 class category:
@@ -276,6 +278,7 @@ class SettingsPage:
         item(label="Save changes", type="button", action=config.save, description="Saves the settings to a file"),
         item(label="Revert changes", type="button", action=utils.reload_config_from_settings, description="Reloads config file. Beware, any unsaved changes will be lost"),
         item(label="Update volume", type="button", action=MusicPlayerPage.update_volume, description="Updates volume for the music player"),
+        item(label="Keybinds", type="button", action=utils.open_keybind_page, description="List of all keybinds. not changable")
     ]
     selected = 1
     
@@ -285,7 +288,7 @@ class SettingsPage:
         for x in SettingsPage.options:
             if x.type in ["int", "bool"]:
                 if SettingsPage.options.index(x) == SettingsPage.selected:
-                    sc.addstr(y, 5, f"{x.label}: {x.value}", curses.A_BOLD)
+                    sc.addstr(y, 5, f"{x.label}: {x.value}", curses.A_REVERSE)
                     message(x.description)
                 else:
                     sc.addstr(y, 5, f"{x.label}: {x.value}")
@@ -293,7 +296,7 @@ class SettingsPage:
                 sc.addstr(y, 5, x.label, curses.A_REVERSE)
             else:
                 if SettingsPage.options.index(x) == SettingsPage.selected:
-                    sc.addstr(y, 5, x.label, curses.A_BOLD)
+                    sc.addstr(y, 5, x.label, curses.A_REVERSE)
                     message(x.description)
                 else:
                     sc.addstr(y, 5, x.label)
@@ -355,7 +358,7 @@ class SongsPage:
     def render(sc):
         results = SongsPage.get_results()
         controls1 = "[A] Previous page   [D] Next page               [Enter] Play song        "
-        controls2 = "[F] Not yet         [G] Delete song             [Space] Add song to queue"
+        controls2 = "[F] Edit details    [G] Delete song             [Space] Add song to queue"
         controls3 = "[X] Add song        [C] Add song from spotify   [V] Add song from youtube"
         sc.addstr(config.screenY-3, centerX(controls1), controls1)
         sc.addstr(config.screenY-2, centerX(controls2), controls2)
@@ -411,11 +414,11 @@ class SongsPage:
             if SongsPage.selected -1 < 0: return
             SongsPage.selected -= 1
         
-        if char in [97, 67, 260]: #A
+        if char in [97, 67, 260]: #A/Left
             if SongsPage.page - 1 <= 0: return
             SongsPage.page -= 1
             SongsPage.selected = 0
-        if char in [100, 68, 261]: #D
+        if char in [100, 68, 261]: #D/Right
             if SongsPage.get_results(SongsPage.page + 1).error: return
             SongsPage.page += 1
             SongsPage.selected = 0
@@ -453,9 +456,69 @@ class WelcomePage:
     def process_key(char): pass
         
 class KeybindsPage:
-    def render(sc): pass
+    index = 0
     
-    def process_key(char): pass
+    musicplayer = item(name="Music Player",
+        keybinds = [
+            item(key="Space", desc="Pause/resume"),
+            item(key="UP", desc="Volume up"),
+            item(key="DOWN", desc="Volume down"),
+            item(key="LEFT", desc="Previous song"),
+            item(key="RIGHT", desc="Next song"),
+        ])
+    settings = item(name="Settings",
+        keybinds = [
+            item(key="UP", desc="Move selection up"),
+            item(key="DOWN", desc="Move selection down"),
+            item(key="LEFT", desc="Number decrease"),
+            item(key="RIGTH", desc="Number increase"),
+            item(key="Enter", desc="Change boolean/press button"),       
+        ])
+    songs = item(name="Song list",
+        keybinds = [
+            item(key="UP", desc="Move selection up"),
+            item(key="DOWN", desc="Move selection down"),
+            item(key="Enter", desc="Play song"),
+            item(key="Space", desc="Add song to queue"),
+            item(key="D", desc="Next page"),
+            item(key="A", desc="Previous page"),
+            item(key="G", desc="Delete song"),
+            item(key="F", desc="Edit song details"),
+            item(key="X", desc="Add song"),
+            item(key="C", desc="Add song from spotify"),
+            item(key="V", desc="Add song from youtube"),
+            
+        ])
+    pages = [musicplayer, settings, songs]
+    
+    def render(sc):
+        
+        page = KeybindsPage.pages[KeybindsPage.index]
+        
+        controls = "[A] Previous page   [D] Next page"
+        sc.addstr(config.screenY-1, centerX(controls), controls)
+        
+        x_offset = 5
+        for x in KeybindsPage.pages:
+            if x == page: sc.addstr(4,x_offset, x.name, curses.A_REVERSE)
+            else: sc.addstr(4,x_offset, x.name)
+            x_offset += len(x.name)+2
+        
+        for x in range(len(page.keybinds)):
+            i = page.keybinds[x]
+            sc.addstr(6+x, 5, f"[{i.key}] {i.desc}")
+    
+    def process_key(char):
+        if char in [97, 67, 260]: #A/Left
+            if KeybindsPage.index - 1 < 0:
+                KeybindsPage.index = len(KeybindsPage.pages) - 1
+            else: KeybindsPage.index -= 1
+
+        if char in [100, 68, 261]: #D/Right
+            if KeybindsPage.index + 1 >= len(KeybindsPage.pages):
+                KeybindsPage.index = 0
+            else: KeybindsPage.index += 1
+
 
 class ExitPage:
     def render(sc):
