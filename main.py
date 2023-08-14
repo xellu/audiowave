@@ -172,11 +172,6 @@ class MusicPlayerPage:
                     "─"*elapsed  + config.progressBarIcon + "─"*(50-elapsed) )
             sc.addstr(centerY()+3, centerX(song_progress), song_progress)
             if status.paused: sc.addstr(centerY()+4, centerX("▌▌"), "▌▌")
-            
-        
-            
-        
-
     
     def process_key(char):
         player = MusicPlayerPage.player
@@ -234,7 +229,7 @@ class SettingsPage:
         item(label="Screen Y", value=config.screenY, key="screenY", type="int", intmin=15, intmax=1000, description="Height of screen (Warning: Changing this may result in visual glitches)"),
         item(label="Exit prompt", value=config.exitPrompt, key="exitPrompt", type="bool", description="Asks for confirmation before exiting"),
         item(label="Volume", value=config.volume, key="volume", type="int", intmin=0, intmax=20, description="Change audio volume"),
-        item(label="Welcome screen", value=config.welcomeScreen, key="welcomeScreen", type="bool", description="Shows a welcome screen when enabled"),
+        item(label="Welcome screen", value=config.welcomeScreen, key="welcomeScreen", type="bool", description="Shows a welcome screen on startup"),
         
         item(label="Actions", type="title"),
         item(label="Save changes", type="button", action=config.save, description="Saves the settings to a file"),
@@ -315,7 +310,8 @@ class SettingsPage:
     
 class SongsPage:
     def render(sc):
-        pass
+        controls = "[X] Add song   [C] Add song from spotify   [V] Add song from youtube"
+        sc.addstr(config.screenY-1, centerX(controls), controls)
     
     def process_key(char): pass
     
@@ -336,21 +332,25 @@ class WelcomePage:
     
     def process_key(char): pass
         
+class KeybindsPage:
+    def render(sc): pass
+    
+    def process_key(char): pass
 
 class ExitPage:
     def render(sc):
         if not config.exitPrompt: os._exit(0)
         msg1 = "Are you sure you want to exit?"
         msg2 = "[Enter]  Yes"
-        msg3 = "[Space]   No"
+        msg3 = "[ESC]    No "
         
         sc.addstr(centerY(), centerX(msg1), msg1)
         sc.addstr(centerY()+1, centerX(msg2), msg2)
         sc.addstr(centerY()+2, centerX(msg3), msg3)
     
     def process_key(char):
-        if char == 32:
-            current.page = WelcomePage
+        if char == 27:
+            current.page = WelcomePage if config.welcomeScreen else MusicPlayerPage
         elif char in [10, 459]:
             save()
             os._exit(0)
@@ -367,7 +367,7 @@ categories = [
         category("Songs", "R", [114, 82], SongsPage),
         category("Playlists", "T", [116, 84],PlaylistsPage),
         category("Settings", "S", [115, 83], SettingsPage),
-        category("Exit", "ESC", [27], ExitPage)
+        category("Exit", "Q", [113, 81], ExitPage)
     ]
 
 #----
