@@ -42,6 +42,12 @@ class utils:
 
     def get_duration(path):
         return mutagen.File(path).info.length
+    
+    def get_index(arr, index):
+        if index < len(arr):
+            element = arr[index]
+            return element
+        
 
 
 class category:
@@ -157,6 +163,7 @@ class MusicPlayerPage:
     status = item(duration=0, duration_last=time.time(), paused=False)
     player = None
     queue = []
+    queue_index = 0
     
     def render(sc):
         player = MusicPlayerPage.player
@@ -168,8 +175,12 @@ class MusicPlayerPage:
 
         
         if status.duration >= metadata.get("duration", 0):
-            if len(MusicPlayerPage.queue) > 0: MusicPlayerPage.playsong(MusicPlayerPage.queue[0].path)
-        
+            if utils.get_index(MusicPlayerPage.queue, MusicPlayerPage.queue_index) != None:
+                MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
+                MusicPlayerPage.queue_index += 1
+            else:
+                MusicPlayerPage.status.paused = True
+                
         if status.paused == False:
             status.duration += time.time() - status.duration_last
         status.duration_last = time.time()
@@ -217,6 +228,17 @@ class MusicPlayerPage:
                 if config.volume - 1 < 0: return
                 config.volume -= 1
                 player.set_volume(config.volume/20)
+            case 261: #right
+                r = utils.get_index(MusicPlayerPage.queue, MusicPlayerPage.queue_index)
+                if r == None: return
+                MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
+                MusicPlayerPage.queue_index += 1
+            case 260: #left
+                r = utils.get_index(MusicPlayerPage.queue, MusicPlayerPage.queue_index-1)
+                if r == None: return
+                MusicPlayerPage.queue_index -= 1
+                MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
+                
                 
     def playsong(path):
         player = MusicPlayerPage.player
@@ -389,11 +411,11 @@ class SongsPage:
             if SongsPage.selected -1 < 0: return
             SongsPage.selected -= 1
         
-        if char in [97, 67]: #A
+        if char in [97, 67, 260]: #A
             if SongsPage.page - 1 <= 0: return
             SongsPage.page -= 1
             SongsPage.selected = 0
-        if char in [100, 68]: #D
+        if char in [100, 68, 261]: #D
             if SongsPage.get_results(SongsPage.page + 1).error: return
             SongsPage.page += 1
             SongsPage.selected = 0
@@ -408,6 +430,8 @@ class SongsPage:
             MusicPlayerPage.queue.append(results[selected])
         if char in [10, 459]: #Enter
             MusicPlayerPage.playsong(results[selected].path)
+            if config.playerOnSelect:
+                current.page = MusicPlayerPage
             
 
             
