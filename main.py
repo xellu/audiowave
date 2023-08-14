@@ -27,6 +27,11 @@ class utils:
             if x.type in ["int", "bool"]:
                 x.value = config.get(x.key)
         
+    def to_minutes(seconds):
+        minutes = seconds // 60
+        remaining_seconds = seconds % 60
+        return f"{int(minutes)}:{int(remaining_seconds):02d}"
+
 
 class category:
     def __init__(self, name, shortcut, shortcut_int, render_engine):
@@ -125,18 +130,21 @@ class MusicPlayerPage:
     player = None
     
     def render(sc):
-        if MusicPlayerPage.player == None or MusicPlayerPage.player.path == None: metadata = {}
+        player = MusicPlayerPage.player
+        if player == None or player.path == None: metadata = {}
         else: metadata = MusicPlayerPage.player.get_metadata()
         
         status = MusicPlayerPage.status
         if status.paused == False:
             status.duration += time.time() - status.duration_last
         status.duration_last = time.time()
-        message(str(int(status.duration)) + "s elapsed")
         
-        controls = "[Space] Pause   [Enter] Random song"
+        
+        if player.path == None:
+            sc.addstr(centerY(), centerX("No track selected"), "No track selected")
+            return
+        
         line2 = f"By {metadata.get('artist', 'Artist')}"
-        #sc.addstr(config.screenY-1, centerX(controls), controls)
         sc.addstr(centerY(), centerX(metadata.get("title", "Title")), metadata.get("title", "Title"))
         sc.addstr(centerY()+1, centerX(line2), line2)
         
@@ -144,8 +152,14 @@ class MusicPlayerPage:
         sc.addstr(config.screenY-1, 0, volume)
                         
         if metadata.get("duration") != None:
-            song_progress = "─" * int( (status.duration / metadata.get("duration", 0)) * 50 ) + config.progressBarIcon + "─" * int( 50 - (status.duration / metadata.get("duration", 0)) * 50 )
+            elapsed = int( (status.duration / metadata.get("duration", 0)) * 50 )
+            song_progress = utils.to_minutes(status.duration) + " % " + utils.to_minutes(metadata.get("duration"))
+            song_progress = song_progress.replace("%",
+                    "─"*elapsed  + config.progressBarIcon + "─"*(50-elapsed) )
             sc.addstr(centerY()+3, centerX(song_progress), song_progress)
+            if status.paused: sc.addstr(centerY()+4, centerX("▌▌"), "▌▌")
+            
+        
             
         
 
@@ -166,13 +180,13 @@ class MusicPlayerPage:
                     message("Paused")
             
             case 259:
-                if config.volume + 1 > 10: return
+                if config.volume + 1 > 20: return
                 config.volume += 1
-                player.set_volume(config.volume/10)
+                player.set_volume(config.volume/20)
             case 258:
                 if config.volume - 1 < 0: return
                 config.volume -= 1
-                player.set_volume(config.volume/10)
+                player.set_volume(config.volume/20)
             case 10:
                 MusicPlayerPage.playsong("songs/"+random.choice(os.listdir("songs")))
                 
@@ -189,8 +203,13 @@ class MusicPlayerPage:
         MusicPlayerPage.status.duration_last = time.time()
     
     def play():
-        player = audioplayer.AudioPlayer(config.volume)
+        player = audioplayer.AudioPlayer(config.volume/20)
         MusicPlayerPage.player = player
+    
+    def update_volume():
+        player = MusicPlayerPage.player
+        if player.get_volume() != config.volume/20:
+            player.set_volume(config.volume/20)
     
         
 
@@ -198,13 +217,15 @@ class SettingsPage:
     options = [
         item(label="Settings", type="title"),
         item(label="Screen X", value=config.screenX, key="screenX", type="int", intmin=75, intmax=1000, description="Width of screen (Warning: Changing this may result in visual glitches)"),
-        item(label="Screen Y", value=config.screenY, key="screenY", type="int", intmin=12, intmax=1000, description="Height of screen (Warning: Changing this may result in visual glitches)"),
+        item(label="Screen Y", value=config.screenY, key="screenY", type="int", intmin=15, intmax=1000, description="Height of screen (Warning: Changing this may result in visual glitches)"),
         item(label="Exit prompt", value=config.exitPrompt, key="exitPrompt", type="bool", description="Asks for confirmation before exiting"),
-        item(label="Volume", value=config.volume, key="volume", type="int", intmin=0, intmax=10, description="Change audio volume"),
+        item(label="Volume", value=config.volume, key="volume", type="int", intmin=0, intmax=20, description="Change audio volume"),
+        item(label="Welcome screen", value=config.welcomeScreen, key="welcomeScreen", type="bool", description="Shows a welcome screen when enabled"),
         
         item(label="Actions", type="title"),
         item(label="Save changes", type="button", action=config.save, description="Saves the settings to a file"),
-        item(label="Revert changes", type="button", action=utils.reload_config_from_settings, description="Reloads config file. Beware, any unsaved changes will be lost")
+        item(label="Revert changes", type="button", action=utils.reload_config_from_settings, description="Reloads config file. Beware, any unsaved changes will be lost"),
+        item(label="Update volume", type="button", action=MusicPlayerPage.update_volume, description="Updates volume for the music player"),
     ]
     selected = 1
     
@@ -314,7 +335,7 @@ class ExitPage:
 #----
 
 class current:
-    page = WelcomePage
+    page = WelcomePage if config.welcomeScreen else MusicPlayerPage
     message = ""
     playing = item(name = "")
 
