@@ -9,9 +9,9 @@ import os
 import random
 import string
 import mutagen
-import tkinter as tk
 from tkinter import simpledialog
 import audioplayer
+from engine import spotify, youtube
 
 version = "1.0.0"
 config = cfg.Config("config.json")
@@ -441,6 +441,7 @@ class SongsPage:
             try: song = results[selected]
             except IndexError: return
             
+            SongsPage.selected = 0
             songsdb.delete(song)
         if char == 32: #Space
             MusicPlayerPage.queue.append(results[selected])
@@ -470,13 +471,15 @@ class SongsPage:
             message("Song added")
         
         if char in [99, 67]: #C
-            song_url = simpledialog.askstring("AudioWave", "Spotify URL")
+            msgpage("Option unavailable", SongsPage)
+            
         if char in [118,86]: #V
-            file = "".join(random.choice(string.ascii_letters))
-            
-           
-                
-            
+            url = simpledialog.askstring("AudioWave", "Youtube URL")
+            if url == None:
+                message("Cancelled")
+                return
+            youtube.Download(url, message_instance=message, db_instance=songsdb).run_threaded()
+
             
 class PlaylistsPage:
     def render(sc):
