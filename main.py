@@ -113,6 +113,7 @@ class keylistener_engine:
         curses.wrapper(self.loop)
     
     def loop(self, sc):
+        current_category_index = 0
         while True:
             char = sc.getch()
             print("KEY PRESS: ",char)
@@ -121,10 +122,16 @@ class keylistener_engine:
             current.page.process_key(char)
             
             #switch category page    
+            
+            if char == 9: #tabbing
+                current_category_index = (current_category_index + 1) % (len(categories)-1)
+                current.page = categories[current_category_index].render_engine
+                
             for category in categories:
                 if char in category.shortcut_int:
                     message()
                     current.page = category.render_engine
+                    current_category_index = categories.index(category)
                 
                     
             
@@ -137,7 +144,8 @@ class MusicPlayerPage:
     
     def render(sc):
         player = MusicPlayerPage.player
-        if player == None or player.path == None: metadata = {}
+        if player == None: return
+        if player.path == None: metadata = {}
         else: metadata = MusicPlayerPage.player.get_metadata()
         
         status = MusicPlayerPage.status
@@ -262,11 +270,19 @@ class SettingsPage:
                 if len(SettingsPage.options) <= SettingsPage.selected+1:
                     return
                 SettingsPage.selected += 1
+                obj = SettingsPage.options[SettingsPage.selected]
+                if obj.type == "title" and SettingsPage.selected+2 <= len(SettingsPage.options):
+                    SettingsPage.selected += 1
             
             case 259:
                 if SettingsPage.selected - 1 < 0:
                     return
                 SettingsPage.selected -= 1
+                obj = SettingsPage.options[SettingsPage.selected]
+                if obj.type == "title" and SettingsPage.options.index(obj) != 0:
+                    SettingsPage.selected -= 1
+                elif obj.type == "title" and SettingsPage.options.index(obj) == 0:
+                    SettingsPage.selected += 1
             
             case 260:
                 option = SettingsPage.options[SettingsPage.selected]
