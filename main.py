@@ -10,8 +10,8 @@ import random
 import string
 import mutagen
 from tkinter import simpledialog
-import audioplayer
 from engine import spotify, youtube
+import audioplayer
 
 version = "1.0.0"
 config = cfg.Config("config.json")
@@ -19,6 +19,10 @@ songsdb = db.Database("songs", logging=False)
 
 def centerX(string):
     return int( config.screenX / 2 ) - int( len(string) /2 )
+
+def centerXint(num):
+    return int( config.screenX / 2 ) - int( num/2 )
+
 
 def centerY():
     return int(config.screenY/2)
@@ -369,11 +373,12 @@ class SongsPage:
     results_per_page = 10
     
     def render(sc):
+        SongsPage.results_per_page = config.screenY - 9
         results = SongsPage.get_results()
         if len(results.content) == 0: SongsPage.page -= 1
         
         controls1 = "[A] Previous page   [D] Next page               [Enter] Play song        "
-        controls2 = "[F] Edit details    [G] Delete song             [Space] Add song to queue"
+        controls2 = "[B] Edit details    [G] Delete song             [Space] Add song to queue"
         controls3 = "[X] Add song        [C] Add song from spotify   [V] Add song from youtube"
         sc.addstr(config.screenY-3, centerX(controls1), controls1)
         sc.addstr(config.screenY-2, centerX(controls2), controls2)
@@ -383,21 +388,21 @@ class SongsPage:
         stats = f"Page: {SongsPage.page} - Showing {len(results.content)} out of {len(songsdb.content)} results"
         sc.addstr(3, centerX(stats), stats)
         
-        sc.addstr(5,5, "TITLE", curses.A_REVERSE)
-        sc.addstr(5,30, "ARTIST", curses.A_REVERSE)
-        sc.addstr(5,45, "ALBUM", curses.A_REVERSE)
-        sc.addstr(5,65, "DURATION", curses.A_REVERSE)
+        sc.addstr(5, centerXint(25)-30, "TITLE", curses.A_REVERSE)
+        sc.addstr(5, centerXint(15)-5, "ARTIST", curses.A_REVERSE)
+        sc.addstr(5, centerXint(20)+15, "ALBUM", curses.A_REVERSE)
+        sc.addstr(5, centerXint(8)+30, "DURATION", curses.A_REVERSE)
         for x in range(len(results.content)):
             if results.content.index( results.content[x] ) == SongsPage.selected: highlight = curses.A_REVERSE
             else: highlight = curses.A_BOLD
                 
             r = results.content[x]
-            sc.addstr(6+x,5, r.title, highlight)
-            sc.addstr(6+x,30, r.artist, highlight)
-            sc.addstr(6+x,45, r.album, highlight)
+            sc.addstr(6+x, centerXint(25)-30, r.title[:24], highlight)
+            sc.addstr(6+x, centerXint(15)-5, r.artist[:14], highlight)
+            sc.addstr(6+x, centerXint(20)+15, r.album[:19], highlight)
             if os.path.exists(r.path):
-                sc.addstr(6+x,65, utils.to_minutes( utils.get_duration(r.path) ), highlight)
-            else: sc.addstr(6+x,65, "MOVED/DELETED", curses.COLOR_RED)
+                sc.addstr(6+x,centerXint(8)+30, utils.to_minutes( utils.get_duration(r.path) ), highlight)
+            else: sc.addstr(6+x,centerXint(8)+30, "MOVED/DELETED", curses.COLOR_RED)
             
         
     def get_results(page=None):
@@ -527,7 +532,7 @@ class KeybindsPage:
             item(key="D", desc="Next page"),
             item(key="A", desc="Previous page"),
             item(key="G", desc="Delete song"),
-            item(key="F", desc="Edit song details"),
+            item(key="B", desc="Edit song details"),
             item(key="X", desc="Add song"),
             item(key="C", desc="Add song from spotify"),
             item(key="V", desc="Add song from youtube"),
