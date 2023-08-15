@@ -201,19 +201,6 @@ class MusicPlayerPage:
     
         status = MusicPlayerPage.status
 
-        
-        if status.duration >= metadata.get("duration", 0):
-            if utils.get_index(MusicPlayerPage.queue, MusicPlayerPage.queue_index) != None:
-                MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
-                MusicPlayerPage.queue_index += 1
-            else:
-                utils.set_rpc(item(title="Idle", description="https://github.com/xellu/audiowave"))
-                MusicPlayerPage.status.paused = True
-                
-        if status.paused == False:
-            status.duration += time.time() - status.duration_last
-        status.duration_last = time.time()
-        
         if player.path == None:
             sc.addstr(centerY(), centerX("No track selected"), "No track selected")
             return
@@ -232,11 +219,41 @@ class MusicPlayerPage:
             sc.addstr(centerY()+3, centerX(song_progress), song_progress)
             if status.paused: sc.addstr(centerY()+4, centerX("▌▌"), "▌▌")
             
-            if RPCCon:
-                mini_elapsed = int( (status.duration / metadata.get("duration", 0)) * 10 )
-                mini_song_progress = bar.replace("%", "─"*mini_elapsed  + config.progressBarIcon + "─"*(10-mini_elapsed) )
-                if status.paused: mini_song_progress += " ⏸️"
-                utils.set_rpc( item(title=f"Listening to {song.title}", description=mini_song_progress) )
+    def loop_thread():
+        while True:
+            try:
+                MusicPlayerPage.loop()
+                time.sleep(1)
+            except Exception as e:
+                message(f"Player Error: {e}")
+    
+    def loop():
+        player = MusicPlayerPage.player
+        if player == None: return
+        if player.path == None: metadata = {}
+        else: metadata = MusicPlayerPage.player.get_metadata()
+    
+        status = MusicPlayerPage.status
+        
+        if status.duration >= metadata.get("duration", 0):
+            if utils.get_index(MusicPlayerPage.queue, MusicPlayerPage.queue_index) != None:
+                MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
+                MusicPlayerPage.queue_index += 1
+            else:
+                utils.set_rpc(item(title="Idle", description="https://github.com/xellu/audiowave"))
+                MusicPlayerPage.status.paused = True
+                
+        if status.paused == False:
+            status.duration += time.time() - status.duration_last
+        status.duration_last = time.time()
+        
+        song = songsdb.find("path", player.path)
+        if RPCCon and metadata.get("duratrion") != None:
+            bar = utils.to_minutes(status.duration) + " % " + utils.to_minutes(metadata.get("duration"))
+            mini_elapsed = int( (status.duration / metadata.get("duration", 0)) * 10 )
+            mini_song_progress = bar.replace("%", "─"*mini_elapsed  + config.progressBarIcon + "─"*(10-mini_elapsed) )
+            if status.paused: mini_song_progress += " ⏸️"
+            utils.set_rpc( item(title=f"Listening to {song.title}", description=mini_song_progress) )
     
     def process_key(char):
         player = MusicPlayerPage.player
@@ -679,6 +696,7 @@ listener = keylistener_engine()
 threading.Thread(target=render.start).start()
 threading.Thread(target=listener.start).start()
 threading.Thread(target=MusicPlayerPage.play).start()
+threading.Thread(target=MusicPlayerPage.loop_thread).start()
 
 
 
