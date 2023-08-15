@@ -382,20 +382,20 @@ class SongsPage:
         sc.addstr(3, centerX(stats), stats)
         
         sc.addstr(5,5, "TITLE", curses.A_REVERSE)
-        sc.addstr(5,25, "ARTIST", curses.A_REVERSE)
-        sc.addstr(5,40, "ALBUM", curses.A_REVERSE)
-        sc.addstr(5,60, "DURATION", curses.A_REVERSE)
+        sc.addstr(5,30, "ARTIST", curses.A_REVERSE)
+        sc.addstr(5,45, "ALBUM", curses.A_REVERSE)
+        sc.addstr(5,65, "DURATION", curses.A_REVERSE)
         for x in range(len(results.content)):
             if results.content.index( results.content[x] ) == SongsPage.selected: highlight = curses.A_REVERSE
             else: highlight = curses.A_BOLD
                 
             r = results.content[x]
             sc.addstr(6+x,5, r.title, highlight)
-            sc.addstr(6+x,25, r.artist, highlight)
-            sc.addstr(6+x,40, r.album, highlight)
+            sc.addstr(6+x,30, r.artist, highlight)
+            sc.addstr(6+x,45, r.album, highlight)
             if os.path.exists(r.path):
-                sc.addstr(6+x,60, utils.to_minutes( utils.get_duration(r.path) ), highlight)
-            else: sc.addstr(6+x,60, "MOVED/DELETED", curses.COLOR_RED)
+                sc.addstr(6+x,65, utils.to_minutes( utils.get_duration(r.path) ), highlight)
+            else: sc.addstr(6+x,65, "MOVED/DELETED", curses.COLOR_RED)
             
         
     def get_results(page=None):
