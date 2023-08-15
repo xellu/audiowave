@@ -226,16 +226,16 @@ class MusicPlayerPage:
                         
         if metadata.get("duration") != None:
             elapsed = int( (status.duration / metadata.get("duration", 0)) * 50 )
-            song_progress = utils.to_minutes(status.duration) + " % " + utils.to_minutes(metadata.get("duration"))
-            song_progress = song_progress.replace("%",
+            bar = utils.to_minutes(status.duration) + " % " + utils.to_minutes(metadata.get("duration"))
+            song_progress = bar.replace("%",
                     "─"*elapsed  + config.progressBarIcon + "─"*(50-elapsed) )
             sc.addstr(centerY()+3, centerX(song_progress), song_progress)
             if status.paused: sc.addstr(centerY()+4, centerX("▌▌"), "▌▌")
             
             if RPCCon:
-                mini_song_progress = utils.to_minutes(status.duration) + " % " + utils.to_minutes(metadata.get("duration"))
                 mini_elapsed = int( (status.duration / metadata.get("duration", 0)) * 10 )
-                mini_song_progress = mini_song_progress.replace("%", "─"*mini_elapsed  + config.progressBarIcon + "─"*(10-mini_elapsed) )
+                mini_song_progress = bar.replace("%", "─"*mini_elapsed  + config.progressBarIcon + "─"*(10-mini_elapsed) )
+                if status.paused: mini_song_progress += " ⏸️"
                 utils.set_rpc( item(title=f"Listening to {song.title}", description=mini_song_progress) )
     
     def process_key(char):

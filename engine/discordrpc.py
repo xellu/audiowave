@@ -12,7 +12,13 @@ class Presence:
         self.rpc.connect()
 
     def update(self):
-        self.rpc.update(state=self.state.description, details=self.state.title, large_image='audiowaveresize', large_text='github.com/xellu/audiowave')
+        self.rpc.update(
+            state=self.state.description,
+            details=self.state.title,
+            large_image='audiowaveresize',
+            large_text='AudioWave',
+            buttons=[{"label": "Get AudioWave", "url": "https://github.com/xellu/audiowave"}],
+        )
 
     def set_state(self, state):
         self.state = state
