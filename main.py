@@ -254,7 +254,7 @@ class MusicPlayerPage:
             mini_elapsed = int( (status.duration / metadata.get("duration", 0)) * 10 )
             mini_song_progress = bar.replace("%", "─"*mini_elapsed  + config.progressBarIcon + "─"*(10-mini_elapsed) )
             if status.paused: mini_song_progress += " ⏸️"
-            utils.set_rpc( item(title=f"Listening to {song.title}", description=mini_song_progress) )
+            utils.set_rpc( item(title=f"Listening to {song.title} by {song.artist}", description=mini_song_progress) )
     
     def process_key(char):
         player = MusicPlayerPage.player
@@ -479,7 +479,7 @@ class SongsPage:
             SongsPage.page += 1
             SongsPage.selected = 0
         if char in [98, 66]: #B
-            msgpage("Not yet", SongsPage)
+            SongEditPage.open(results[selected])
             
         if char in [103, 71, 330]: #G/Del
             try: song = results[selected]
@@ -619,6 +619,65 @@ class KeybindsPage:
             if KeybindsPage.index + 1 >= len(KeybindsPage.pages):
                 KeybindsPage.index = 0
             else: KeybindsPage.index += 1
+
+class SongEditPage:
+    song = item(title="Unknown Title", artist="Unknown Artist", album="Unknown Album", path="No path")
+    options = [
+        item(value=song.title, attr="title"),
+        item(value=song.artist, attr="artist"),
+        item(value=song.album, attr="album"),
+        item(value=song.path, attr="path"),
+    ]
+    selected = 0
+    
+    def open(song):
+        SongEditPage.song = song
+        SongEditPage.selected = 0
+        SongEditPage.options = [
+            item(value=song.title, attr="title"),
+            item(value=song.artist, attr="artist"),
+            item(value=song.album, attr="album"),
+            item(value=song.path, attr="path"),
+        ]
+        current.page = SongEditPage
+    
+    def render(sc):    
+        controls = "[Enter] Edit   [ESC] Return"
+        sc.addstr(config.screenY-1, centerX(controls), controls)
+        
+        sc.addstr(4,5, "TITLE  ", curses.A_REVERSE)
+        sc.addstr(5,5, "ARTIST ", curses.A_REVERSE)
+        sc.addstr(6,5, "ALBUM  ", curses.A_REVERSE)
+        sc.addstr(7,5, "PATH   ", curses.A_REVERSE)
+        
+        for x in range(len(SongEditPage.options)):
+            if SongEditPage.selected == x: sc.addstr(4+x, 13, str(SongEditPage.options[x].value), curses.A_REVERSE)
+            else: sc.addstr(4+x, 13, str(SongEditPage.options[x].value))
+        
+        
+        
+    def process_key(char):
+        if SongEditPage.song == None:
+            current.page = SongsPage
+            return
+        
+        if char == 259: #down
+            if SongEditPage.selected - 1 < 0: return
+            SongEditPage.selected -= 1 
+        if char == 258: #up
+            if SongEditPage.selected + 1 > len(SongEditPage.options)-1: return
+            SongEditPage.selected += 1
+        if char in [10, 459]: #enter
+            selected = SongEditPage.options[SongEditPage.selected]
+            new_val = simpledialog.askstring("AudioWave", selected.attr)
+            if new_val == None:
+                message("Cancelled")
+                return
+            song = songsdb.find("path", SongEditPage.song.path)
+            setattr(song, selected.attr, new_val)
+            SongEditPage.open(song)
+        if char in [27]: #escape
+            current.page = SongsPage
 
 class InfoPage:
     def render(sc):
