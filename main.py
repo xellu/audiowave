@@ -248,7 +248,7 @@ class MusicPlayerPage:
         status.duration_last = time.time()
         
         song = songsdb.find("path", player.path)
-        if RPCCon and metadata.get("duratrion") != None:
+        if RPCCon and player.path != None:
             bar = utils.to_minutes(status.duration) + " % " + utils.to_minutes(metadata.get("duration"))
             mini_elapsed = int( (status.duration / metadata.get("duration", 0)) * 10 )
             mini_song_progress = bar.replace("%", "─"*mini_elapsed  + config.progressBarIcon + "─"*(10-mini_elapsed) )
@@ -284,8 +284,7 @@ class MusicPlayerPage:
                 MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
                 MusicPlayerPage.queue_index += 1
             case 260: #left
-                r = utils.get_index(MusicPlayerPage.queue, MusicPlayerPage.queue_index-1)
-                if r == None: return
+                if MusicPlayerPage.queue_index < 0: return
                 MusicPlayerPage.queue_index -= 1
                 MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
                 
