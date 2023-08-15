@@ -2,6 +2,7 @@ print("[AudioWave] Application is booting up...")
 
 from dataforge import config as cfg
 from dataforge import database as db
+from dataforge import cache
 import curses
 import threading
 import time
@@ -10,12 +11,13 @@ import random
 import string
 import mutagen
 from tkinter import simpledialog
-from engine import spotify, youtube
+from engine import spotify, youtube, discordrpc
 import audioplayer
 
 version = "1.0.0"
 config = cfg.Config("config.json")
 songsdb = db.Database("songs", logging=False)
+RPCCon = False
 
 def centerX(string):
     return int( config.screenX / 2 ) - int( len(string) /2 )
@@ -49,6 +51,7 @@ class utils:
         remaining_seconds = seconds % 60
         return f"{int(minutes)}:{int(remaining_seconds):02d}"
 
+    @cache.use
     def get_duration(path):
         return mutagen.File(path).info.length
     
@@ -62,7 +65,12 @@ class utils:
     
     def open_info_page():
         current.page = InfoPage
-
+        
+    def set_rpc(state):
+        if not RPCCon: print("RPC is not connected")
+        
+        rpc.set_state(state)
+        
 
 class category:
     def __init__(self, name, shortcut, shortcut_int, render_engine):
@@ -199,6 +207,7 @@ class MusicPlayerPage:
                 MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
                 MusicPlayerPage.queue_index += 1
             else:
+                utils.set_rpc(item(title="Idle", description="https://github.com/xellu/audiowave"))
                 MusicPlayerPage.status.paused = True
                 
         if status.paused == False:
@@ -222,6 +231,12 @@ class MusicPlayerPage:
                     "─"*elapsed  + config.progressBarIcon + "─"*(50-elapsed) )
             sc.addstr(centerY()+3, centerX(song_progress), song_progress)
             if status.paused: sc.addstr(centerY()+4, centerX("▌▌"), "▌▌")
+            
+            if RPCCon:
+                mini_song_progress = utils.to_minutes(status.duration) + " % " + utils.to_minutes(metadata.get("duration"))
+                mini_elapsed = int( (status.duration / metadata.get("duration", 0)) * 10 )
+                mini_song_progress = mini_song_progress.replace("%", "─"*mini_elapsed  + config.progressBarIcon + "─"*(10-mini_elapsed) )
+                utils.set_rpc( item(title=f"Listening to {song.title}", description=mini_song_progress) )
     
     def process_key(char):
         player = MusicPlayerPage.player
@@ -645,9 +660,21 @@ threading.Thread(target=render.start).start()
 threading.Thread(target=listener.start).start()
 threading.Thread(target=MusicPlayerPage.play).start()
 
+
+
+rpc = discordrpc.Presence(1140567681309880441)
+
+try:
+    rpc.connect()
+    RPCCon = True
+except:
+    RPCcon = False
+    
 while True:
     try:
-        time.sleep(1)
+        time.sleep(5)
+        if RPCCon:
+            rpc.update()
     except KeyboardInterrupt:
         save()
         print("Exiting...")
@@ -656,4 +683,3 @@ while True:
         save()
         print(f"Application crashed: {error}")
         os._exit(0)
-        
