@@ -461,12 +461,12 @@ class SongsPage:
         selected = SongsPage.selected
         if char == 258: #Down
             if SongsPage.selected + 1 >= len(results):
-                SongsPage.process_key(100)
+                SongsPage.selected = 0
                 return
             SongsPage.selected += 1
         if char == 259: #Up
             if SongsPage.selected -1 < 0:
-                SongsPage.process_key(97)
+                SongsPage.selected = len(SongsPage.get_results().content)-1 
                 return
             SongsPage.selected -= 1
         
