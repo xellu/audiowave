@@ -373,7 +373,7 @@ class SongsPage:
     results_per_page = 10
     
     def render(sc):
-        SongsPage.results_per_page = config.screenY - 9
+        SongsPage.results_per_page = config.screenY - 10
         results = SongsPage.get_results()
         if len(results.content) == 0: SongsPage.page -= 1
         
