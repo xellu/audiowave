@@ -402,7 +402,6 @@ class SongsPage:
         
     def get_results(page=None):
         if page == None: page = SongsPage.page
-        
         results_per_page = SongsPage.results_per_page
         
         cl = songsdb.content
