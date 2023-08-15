@@ -386,6 +386,7 @@ class SongsPage:
     page = 1
     selected = 0
     results_per_page = 10
+    db = songsdb
     
     def render(sc):
         SongsPage.results_per_page = config.screenY - 10
@@ -394,13 +395,13 @@ class SongsPage:
         
         controls1 = "[A] Previous page   [D] Next page               [Enter] Play song        "
         controls2 = "[B] Edit details    [G] Delete song             [Space] Add song to queue"
-        controls3 = "[X] Add song        [C] Add song from spotify   [V] Add song from youtube"
+        controls3 = "[X] Add song        [C] Add song from youtube   [F] Search               "
         sc.addstr(config.screenY-3, centerX(controls1), controls1)
         sc.addstr(config.screenY-2, centerX(controls2), controls2)
         sc.addstr(config.screenY-1, centerX(controls3), controls3)
         
         if results.error: sc.addstr(centerY(), centerX("Page not found"), "Page not found")
-        stats = f"Page: {SongsPage.page} - Showing {len(results.content)} out of {len(songsdb.content)} results"
+        stats = f"Page: {SongsPage.page} - Showing {len(results.content)} out of {len(SongsPage.db.content)} results"
         sc.addstr(3, centerX(stats), stats)
         
         sc.addstr(5, centerXint(25)-30, "TITLE", curses.A_REVERSE)
@@ -424,7 +425,7 @@ class SongsPage:
         if page == None: page = SongsPage.page
         results_per_page = SongsPage.results_per_page
         
-        cl = songsdb.content
+        cl = SongsPage.db.content
         pfac = results_per_page*(SongsPage.page-1)
         try: cl[pfac]
         except IndexError: return item(content=[], error=True)
@@ -456,8 +457,9 @@ class SongsPage:
             if SongsPage.get_results(SongsPage.page + 1).error: return
             SongsPage.page += 1
             SongsPage.selected = 0
-        if char in [102, 70]: #F
+        if char in [98, 66]: #B
             msgpage("Not yet", SongsPage)
+            
         if char in [103, 71, 330]: #G/Del
             try: song = results[selected]
             except IndexError: return
@@ -492,15 +494,30 @@ class SongsPage:
             message("Song added")
         
         if char in [99, 67]: #C
-            msgpage("Option unavailable", SongsPage)
-            
-        if char in [118,86]: #V
             url = simpledialog.askstring("AudioWave", "Youtube URL")
             if url == None:
                 message("Cancelled")
                 return
             youtube.Download(url, message_instance=message, db_instance=songsdb).run_threaded()
+            
+        if char in [102, 70]: #F
+            if SongsPage.db != songsdb:
+                SongsPage.db = songsdb
+                return
+            
+            query = simpledialog.askstring("Search", "Prompt")
+            if query == None: return
 
+            searchdb = item(content=[])
+            SongsPage.db = searchdb
+            
+            for song in songsdb.content:
+                if ( query.lower() in song.title.lower() or
+                query.lower() in song.artist.lower() or
+                query.lower() in song.album.lower() ):
+                    searchdb.content.append(song)
+                    
+            
             
 class PlaylistsPage:
     def render(sc):
@@ -549,9 +566,8 @@ class KeybindsPage:
             item(key="G", desc="Delete song"),
             item(key="B", desc="Edit song details"),
             item(key="X", desc="Add song"),
-            item(key="C", desc="Add song from spotify"),
             item(key="V", desc="Add song from youtube"),
-            
+            item(key="F", desc="Search/Close search results")
         ])
     pages = [musicplayer, settings, songs]
     
