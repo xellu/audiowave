@@ -370,6 +370,8 @@ class SongsPage:
     
     def render(sc):
         results = SongsPage.get_results()
+        if len(results.content) == 0: SongsPage.page -= 1
+        
         controls1 = "[A] Previous page   [D] Next page               [Enter] Play song        "
         controls2 = "[F] Edit details    [G] Delete song             [Space] Add song to queue"
         controls3 = "[X] Add song        [C] Add song from spotify   [V] Add song from youtube"
