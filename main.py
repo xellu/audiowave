@@ -173,6 +173,7 @@ class keylistener_engine:
             #switch category page    
             
             if char == 9: #tab
+                message()
                 current_category_index = (current_category_index + 1) % (len(categories)-1)
                 current.page = categories[current_category_index].render_engine
                 
