@@ -443,10 +443,14 @@ class SongsPage:
         results = SongsPage.get_results().content
         selected = SongsPage.selected
         if char == 258: #Down
-            if SongsPage.selected + 1 >= len(results): return
+            if SongsPage.selected + 1 >= len(results):
+                SongsPage.process_key(100)
+                return
             SongsPage.selected += 1
         if char == 259: #Up
-            if SongsPage.selected -1 < 0: return
+            if SongsPage.selected -1 < 0:
+                SongsPage.process_key(97)
+                return
             SongsPage.selected -= 1
         
         if char in [97, 67, 260]: #A/Left
