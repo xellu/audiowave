@@ -11,8 +11,13 @@ import random
 import string
 import mutagen
 from tkinter import simpledialog
-from engine import spotify, youtube, discordrpc
+from engine import spotify, youtube, discordrpc, startup_requirements
 import audioplayer
+
+startup_requirements.require(
+        files = ["playlists.df.json", "songs.df.json", "config.json", "songs"],
+        error_message = "[!] Application unable, because %file% is missing. re-run setup and try again. If the issue persists report this issue here: https://github.com/xellu/audiowave/issues"
+    )
 
 version = "1.0.0"
 config = cfg.Config("config.json")

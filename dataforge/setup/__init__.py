@@ -14,7 +14,7 @@ class Setup():
         self.setup_file = setup_file
         self.setup_data = setup_data
         
-        self.task = console.tag(console.COLOR.LIGHTCYAN_EX, "TASK").use if _print else self.void
+        self.task = console.tag(console.COLOR.LIGHTCYAN_EX, "TASK").print if _print else self.void
         self.info = console.info if _print else self.void
         self.warn = console.warn if _print else self.void
         self.error = console.error if _print else self.void
