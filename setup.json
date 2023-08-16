@@ -1,0 +1,43 @@
+[
+    {
+        "action": "MAKEDIR",
+        "path": "songs",
+        "message": "Creating working directory"
+    },
+    {
+        "action": "MAKECONFIG",
+        "path": "config.json",
+        "template": {
+            "screenX": 120,
+            "screenY": 28,
+            "timeformat": "%H:%M:%S",
+            "exitPrompt": true,
+            "volume": 20,
+            "welcomeScreen": true,
+            "progressBarIcon": "\u25c9",
+            "playerOnSelect": true,
+            "musicShuffle": false,
+            "musicLoop": false
+        },
+        "message": "Creating configuration files"
+    },
+    {
+        "action": "MAKEDB",
+        "name": "playlists",
+        "logging": false,
+        "content": [],
+        "message": "Creating storage file"
+    },
+    {
+        "action": "MAKEDB",
+        "name": "songs",
+        "logging": false,
+        "content": [],
+        "message": "Creating storage file"
+    },
+    {
+        "action": "SCRIPT",
+        "code": "import os\nos.system(\"py -m pip install -r requirements.txt\")",
+        "message": "Installing required libraries"
+    }
+]

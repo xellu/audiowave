@@ -1,0 +1,6 @@
+windows-curses
+mutagen
+pypresence
+pytube
+yt-dlp
+moviepy
