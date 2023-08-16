@@ -349,8 +349,8 @@ class SettingsPage:
         item(label="Loop queue", value=config.musicLoop, key="musicLoop", type="bool", description="Loops songs in a queue"),
         item(label="Shuffle queue", value=config.musicShuffle, key="musicShuffle", type="bool", description="Plays songs from queue in random order"),
         item(label="Audio Fade", value=config.audioFade, key="audioFade", type="bool", description="Increases the volume with time (track fades in)"),
-        item(label="Skip Radius", value=config.skipRadius, key="skipRadius", type="int", intmin=1, intmax=60, description="The amount of seconds to go foward/backward when skipping"),
-    
+        item(label="Skip Radius", value=config.skipRadius, key="skipRadius", type="int", intmin=1, intmax=60, description="The amount of seconds to go forward/backward when skipping"),
+
         item(label="Actions", type="title"),
         item(label="Save changes", type="button", action=config.save, description="Saves the settings to a file"),
         item(label="Revert changes", type="button", action=utils.reload_config_from_settings, description="Reloads config file. Beware, any unsaved changes will be lost"),
