@@ -1,5 +1,5 @@
 ![preview](https://github.com/xellu/audiowave/assets/83588955/ac74248d-29ab-4a2d-a85f-236e271bd76e)
-[![pypresence](https://img.shields.io/badge/using-pypresence?style=for-the-badge&logo=discord)](https://github.com/qwertyquerty/pypresence)
+[pypresence](https://img.shields.io/badge/using-pypresence-00bb88.svg?style=for-the-badge&logo=discord)
 ![GitHub Repo stars](https://img.shields.io/github/stars/xellu/audiowave?style=flat-square&logo=github&logoColor=%23fcdb03&label=Stars&color=%23fcdb03)
 
 # AudioWave
