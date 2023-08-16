@@ -17,7 +17,9 @@
             "progressBarIcon": "\u25c9",
             "playerOnSelect": true,
             "musicShuffle": false,
-            "musicLoop": false
+            "musicLoop": false,
+            "audioFade": true,
+            "skipRadius": 3
         },
         "message": "Creating configuration files"
     },

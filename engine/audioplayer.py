@@ -13,9 +13,18 @@ class AudioPlayer:
         self.path = file_path
         pygame.mixer.music.load(file_path)
 
-    def play(self):
+    def play(self, fadeIn=False):
         if self.path == None: return
-        pygame.mixer.music.play()
+        pygame.mixer.music.play(
+            fade_ms = 1500 if fadeIn else 0
+        )
+
+    def seek(self, timestamp):
+        if self.path == None: return
+        
+        pygame.mixer.music.stop()
+        pygame.mixer.music.load(self.path)
+        pygame.mixer.music.play(start=timestamp)
 
     def pause(self):
         pygame.mixer.music.pause()

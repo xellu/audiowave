@@ -11,8 +11,7 @@ import random
 import string
 import mutagen
 from tkinter import simpledialog
-from engine import spotify, youtube, discordrpc, startup_requirements
-import audioplayer
+from engine import youtube, discordrpc, startup_requirements, audioplayer
 
 startup_requirements.require(
         files = ["playlists.df.json", "songs.df.json", "config.json", "songs"],
@@ -274,8 +273,8 @@ class MusicPlayerPage:
         player = MusicPlayerPage.player
         if player == None: message('Player not loaded')
         
-        match char:
-            case 32: #space
+        
+        if char == 32: #space
                 if MusicPlayerPage.status.paused:
                     MusicPlayerPage.status.paused = False
                     player.unpause()
@@ -285,23 +284,35 @@ class MusicPlayerPage:
                     player.pause()
                     message("Paused")
             
-            case 259: #up
-                if config.volume + 1 > 20: return
-                config.volume += 1
-                player.set_volume(config.volume/20)
-            case 258: #down
-                if config.volume - 1 < 0: return
-                config.volume -= 1
-                player.set_volume(config.volume/20)
-            case 261: #right
-                r = utils.get_index(MusicPlayerPage.queue, MusicPlayerPage.queue_index)
-                if r == None: return
-                MusicPlayerPage.queue_index += 1
-                MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
-            case 260: #left
-                if MusicPlayerPage.queue_index == 0: return
-                MusicPlayerPage.queue_index -= 1
-                MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
+        if char == 259: #up
+            if config.volume + 1 > 20: return
+            config.volume += 1
+            player.set_volume(config.volume/20)
+        if char == 258: #down
+            if config.volume - 1 < 0: return
+            config.volume -= 1
+            player.set_volume(config.volume/20)
+        if char == 261: #right
+            r = utils.get_index(MusicPlayerPage.queue, MusicPlayerPage.queue_index)
+            if r == None: return
+            MusicPlayerPage.queue_index += 1
+            MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
+        if char == 260: #left
+            if MusicPlayerPage.queue_index == 0: return
+            MusicPlayerPage.queue_index -= 1
+            MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
+        if char in [97, 67]: #A
+            if MusicPlayerPage.status.duration - config.skipRadius < 0:
+                MusicPlayerPage.status.duration = 0
+            else: MusicPlayerPage.status.duration -= config.skipRadius
+            player.seek(MusicPlayerPage.status.duration)
+        if char in [100, 68]: #D
+            max_duration = player.get_metadata().get("duration", 0)
+            if MusicPlayerPage.status.duration + config.skipRadius > max_duration:
+                MusicPlayerPage.status.duration = max_duration
+            else: MusicPlayerPage.status.duration += config.skipRadius
+            player.seek(MusicPlayerPage.status.duration)
+        
                 
                 
     def playsong(path):
@@ -310,7 +321,7 @@ class MusicPlayerPage:
         
         if player.path != None: player.stop()
         player.load_audio(path)
-        player.play()
+        player.play(fadeIn = config.audioFade)
         
         MusicPlayerPage.status.paused = False
         MusicPlayerPage.status.duration = 0
@@ -337,7 +348,9 @@ class SettingsPage:
         item(label="Player on select", value=config.playerOnSelect, key="playerOnSelect", type="bool", description="Opens music player when a song or playlist is selected"),
         item(label="Loop queue", value=config.musicLoop, key="musicLoop", type="bool", description="Loops songs in a queue"),
         item(label="Shuffle queue", value=config.musicShuffle, key="musicShuffle", type="bool", description="Plays songs from queue in random order"),
-        
+        item(label="Audio Fade", value=config.audioFade, key="audioFade", type="bool", description="Increases the volume with time (track fades in)"),
+        item(label="Skip Radius", value=config.skipRadius, key="skipRadius", type="int", intmin=1, intmax=60, description="The amount of seconds to go foward/backward when skipping"),
+    
         item(label="Actions", type="title"),
         item(label="Save changes", type="button", action=config.save, description="Saves the settings to a file"),
         item(label="Revert changes", type="button", action=utils.reload_config_from_settings, description="Reloads config file. Beware, any unsaved changes will be lost"),
@@ -873,6 +886,9 @@ class KeybindsPage:
             item(key="DOWN", desc="Volume down"),
             item(key="LEFT", desc="Previous song"),
             item(key="RIGHT", desc="Next song"),
+            item(key="A", desc="Go forwards"),
+            item(key="D", desc="Go backwards"),
+            
         ])
     settings = item(name="Settings",
         keybinds = [
