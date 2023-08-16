@@ -230,6 +230,7 @@ class MusicPlayerPage:
         while True:
             try:
                 MusicPlayerPage.loop()
+                time.sleep(0.1)
             except Exception as e:
                 print(f"Player Error: {e}")
     
