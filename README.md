@@ -1,6 +1,5 @@
 ![preview](https://github.com/xellu/audiowave/assets/83588955/ac74248d-29ab-4a2d-a85f-236e271bd76e)
 [![pypresence](https://img.shields.io/badge/using-pypresence-00bb88.svg?style=for-the-badge&logo=discord&logoWidth=20)](https://github.com/qwertyquerty/pypresence)
-![GitHub issues](https://img.shields.io/github/issues/xellu/audiowave?style=flat-square&label=Issues)
 
 # AudioWave
 - [What is AudioWave](<#what-is-audiowave>)
