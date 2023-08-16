@@ -571,7 +571,133 @@ class SongsPage:
             SongsPage.select.callback(SongsPage.select.output)
             current.page = SongsPage.select.return_page
             
+class PlaylistPage:
+    playlist = None
+    def open(playlist):
+        PlaylistPage.playlist = playlist
+        current.page = PlaylistPage
+        
+    page = 1
+    selected = 0
+    results_per_page = 10
+
+    
+    def render(sc):
+        if PlaylistPage.playlist == None:
+            sc.addstr(centerY(), centerX("No playlist selected"), "No playlist selected")
+            return
+        
+        PlaylistPage.results_per_page = config.screenY - 11
+        results = PlaylistPage.get_results()
+        if len(results.content) == 0 and not len(PlaylistPage.playlist.songs) == 0: PlaylistPage.page -= 1
+        
+        controls1 = "[A] Previous page          [D] Next page         [B] Edit details          "
+        controls2 = "[G] Remove from playlist   [X] Add to playlist   [Enter] Play song         "
+        sc.addstr(config.screenY-2, centerX(controls1), controls1)
+        sc.addstr(config.screenY-1, centerX(controls2), controls2)
+        
+    
+        if results.error:
+            sc.addstr(centerY(), centerX("Playlist is empty"), "Playlist is empty")
+        
+        stats = f"Page: {PlaylistPage.page} - Showing {len(results.content)} out of {len(PlaylistPage.playlist.songs)} results"
+        sc.addstr(3, centerX(stats), stats)
+        sc.addstr(5, centerX(PlaylistPage.playlist.name), PlaylistPage.playlist.name, curses.A_REVERSE)
+        
+        sc.addstr(7, centerXint(25)-30, "TITLE", curses.A_REVERSE)
+        sc.addstr(7, centerXint(15)-5, "ARTIST", curses.A_REVERSE)
+        sc.addstr(7, centerXint(20)+15, "ALBUM", curses.A_REVERSE)
+        sc.addstr(7, centerXint(8)+30, "DURATION", curses.A_REVERSE)
+        for x in range(len(results.content)):
+            if results.content.index( results.content[x] ) == PlaylistPage.selected: highlight = curses.A_REVERSE
+            else: highlight = curses.A_BOLD
+                
+            r = songsdb.find("path", results.content[x])
+            if r == None: r = item(title="(DELETED)", artist="Artist", album="Album", path="")
+             
+            sc.addstr(8+x, centerXint(25)-30, r.title[:24], highlight)
+            sc.addstr(8+x, centerXint(15)-5, r.artist[:14], highlight)
+            sc.addstr(8+x, centerXint(20)+15, r.album[:19], highlight)
+            if os.path.exists(r.path):
+                sc.addstr(8+x,centerXint(8)+30, utils.to_minutes( utils.get_duration(r.path) ), highlight)
+            else: sc.addstr(8+x,centerXint(8)+30, "MOVED/DELETED", curses.COLOR_RED)
             
+        
+    def get_results(page=None):
+        if page == None: page = PlaylistPage.page
+        results_per_page = PlaylistPage.results_per_page
+        
+        cl = PlaylistPage.playlist.songs
+        pfac = results_per_page*(PlaylistPage.page-1)
+        try: cl[pfac]
+        except IndexError: return item(content=[], error=True)
+        
+        output = []
+        for x in range(results_per_page):
+            p = pfac+x
+            try: c = cl[p]
+            except IndexError: break
+            output.append(c)
+        
+        return item(content=output, error=False)
+        
+
+    
+    def process_key(char):
+        if PlaylistPage.playlist == None: return
+        results = PlaylistPage.get_results().content
+        selected = PlaylistPage.selected
+        if char == 258: #Down
+            if PlaylistPage.selected + 1 >= len(results):
+                PlaylistPage.selected = 0
+                return
+            PlaylistPage.selected += 1
+        if char == 259: #Up
+            if PlaylistPage.selected -1 < 0:
+                PlaylistPage.selected = len(PlaylistPage.get_results().content)-1 
+                return
+            PlaylistPage.selected -= 1
+        
+        if char in [97, 67, 260]: #A/Left
+            if PlaylistPage.page - 1 <= 0: return
+            PlaylistPage.page -= 1
+            PlaylistPage.selected = 0
+        if char in [100, 68, 261]: #D/Right
+            if PlaylistPage.get_results(PlaylistPage.page + 1).error: return
+            PlaylistPage.page += 1
+            PlaylistPage.selected = 0
+        if char in [98, 66]: #B
+            SongEditPage.open(
+                songsdb.find("path", results[selected])
+            )
+        if char in [103, 71, 330]: #G/DEL
+            song = results[selected]
+            if song in PlaylistPage.playlist.songs:
+                PlaylistPage.playlist.songs.remove(song)
+            PlaylistPage.selected = 0
+        if char in [120, 88]: #X            
+            songs = []
+            for s in PlaylistPage.playlist.songs:
+                song = songsdb.find("path", s)
+                if song != None: songs.append(song)
+            SongsPage.select = item(mode=True, output = songs, return_page = PlaylistPage, callback = PlaylistPage.edit_playlist_callback)
+            current.page = SongsPage
+        if char in [10, 459]: #Enter
+            MusicPlayerPage.playsong(results[selected])
+    
+    def edit_playlist_callback(songs):
+        if len(songs) == 0:
+            playlistsdb.delete(PlaylistPage.playlist)
+            return
+        
+        song_paths = []
+        for s in songs:
+            song_paths.append(s.path)
+        
+        PlaylistPage.playlist.songs = song_paths
+        
+        
+
 class PlaylistListPage:
     page = 1
     selected = 0
@@ -703,7 +829,7 @@ class PlaylistListPage:
             if config.playerOnSelect: current.page = MusicPlayerPage
             
     def create_playlist_callback(songs):
-        if len(songs) == None:
+        if len(songs) == 0:
             message("Cancelled")
             return
         
@@ -716,16 +842,6 @@ class PlaylistListPage:
         
         p = db.Item(name=name, songs=song_paths)
         playlistsdb.add(p)
-        
-class PlaylistPage:
-    playlist = None
-    def open(playlist):
-        PlaylistPage.playlist = playlist
-        current.page = PlaylistPage
-        
-    def render(sc): pass
-    
-    def process_key(char): pass
     
 class WelcomePage:
     def render(sc):
@@ -936,6 +1052,7 @@ categories = [
 
 def save():
     songsdb.save()
+    playlistsdb.save()
     config.save()
     MusicPlayerPage.action = item(action="exit")
     
