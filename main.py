@@ -230,7 +230,6 @@ class MusicPlayerPage:
         while True:
             try:
                 MusicPlayerPage.loop()
-                time.sleep(1)
             except Exception as e:
                 print(f"Player Error: {e}")
     
@@ -242,10 +241,13 @@ class MusicPlayerPage:
     
         status = MusicPlayerPage.status
         
+        if (MusicPlayerPage.queue_index + 1 > len(MusicPlayerPage.queue) - 1) and config.musicLoop:
+            MusicPlayerPage.queue_index = 0
+        
         if status.duration >= metadata.get("duration", 0):
-            if utils.get_index(MusicPlayerPage.queue, MusicPlayerPage.queue_index) != None:
-                MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
+            if utils.get_index(MusicPlayerPage.queue, MusicPlayerPage.queue_index+1) != None:
                 MusicPlayerPage.queue_index += 1
+                MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
             else:
                 utils.set_rpc(item(title="Idle", description="https://github.com/xellu/audiowave"))
                 MusicPlayerPage.status.paused = True
@@ -288,10 +290,10 @@ class MusicPlayerPage:
             case 261: #right
                 r = utils.get_index(MusicPlayerPage.queue, MusicPlayerPage.queue_index)
                 if r == None: return
-                MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
                 MusicPlayerPage.queue_index += 1
+                MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
             case 260: #left
-                if MusicPlayerPage.queue_index < 0: return
+                if MusicPlayerPage.queue_index == 0: return
                 MusicPlayerPage.queue_index -= 1
                 MusicPlayerPage.playsong(MusicPlayerPage.queue[MusicPlayerPage.queue_index].path)
                 
@@ -327,6 +329,8 @@ class SettingsPage:
         item(label="Volume", value=config.volume, key="volume", type="int", intmin=0, intmax=20, description="Change audio volume"),
         item(label="Welcome screen", value=config.welcomeScreen, key="welcomeScreen", type="bool", description="Shows a welcome screen on startup"),
         item(label="Player on select", value=config.playerOnSelect, key="playerOnSelect", type="bool", description="Opens music player when a song or playlist is selected"),
+        item(label="Loop queue", value=config.musicLoop, key="musicLoop", type="bool", description="Loops songs in a queue"),
+        item(label="Shuffle queue", value=config.musicShuffle, key="musicShuffle", type="bool", description="Plays songs from queue in random order"),
         
         item(label="Actions", type="title"),
         item(label="Save changes", type="button", action=config.save, description="Saves the settings to a file"),
@@ -823,6 +827,7 @@ class PlaylistListPage:
                 message("Unable to play: playlist is empty")
                 return
                 
+            if config.musicShuffle: random.shuffle(songs)
             MusicPlayerPage.queue_index = 0
             MusicPlayerPage.queue = songs
             MusicPlayerPage.playsong(songs[0].path)
