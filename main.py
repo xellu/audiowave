@@ -17,6 +17,7 @@ import audioplayer
 version = "1.0.0"
 config = cfg.Config("config.json")
 songsdb = db.Database("songs", logging=False)
+playlistsdb = db.Database("playlists", logging=False)
 RPCCon = False
 
 def centerX(string):
@@ -71,7 +72,12 @@ class utils:
         
         rpc.set_state(state)
         
-
+    def get_playlist_duration(songs: list):
+        dur = 0
+        for song in songs:
+            dur += utils.get_duration(song)
+        return dur
+        
 class category:
     def __init__(self, name, shortcut, shortcut_int, render_engine):
         self.name = name
@@ -169,7 +175,7 @@ class keylistener_engine:
                 current.page.process_key(char)
             except Exception as error:
                 print(f"KEY PROCESSING FAILED: {error}")
-                msgpage(f"KEY PROCESSING FAILED: {error}") 
+                msgpage(f"KEY PROCESSING FAILED: {error}", current.page) 
             #switch category page    
             
             if char == 9: #tab
@@ -226,7 +232,7 @@ class MusicPlayerPage:
                 MusicPlayerPage.loop()
                 time.sleep(1)
             except Exception as e:
-                message(f"Player Error: {e}")
+                print(f"Player Error: {e}")
     
     def loop():
         player = MusicPlayerPage.player
@@ -404,20 +410,32 @@ class SongsPage:
     selected = 0
     results_per_page = 10
     db = songsdb
+    error404 = "You have no songs added, use [X] or [C] to add them"
+    search404 = "No results found"
+    
+    select = item(mode = False, output = [], return_page = None, callback = None)
     
     def render(sc):
         SongsPage.results_per_page = config.screenY - 10
         results = SongsPage.get_results()
-        if len(results.content) == 0: SongsPage.page -= 1
+        if len(results.content) == 0 and not len(SongsPage.db.content) == 0: SongsPage.page -= 1
         
-        controls1 = "[A] Previous page   [D] Next page               [Enter] Play song        "
-        controls2 = "[B] Edit details    [G] Delete song             [Space] Add song to queue"
-        controls3 = "[X] Add song        [C] Add song from youtube   [F] Search               "
+        controls1 = "[A] Previous page    [D] Next page                    [Enter] Play song    "
+        controls2 = "[B] Edit details     [G] Delete song                  [Space] Add to queue "
+        controls3 = "[X] Add song         [C] Add song from youtube        [F] Search           "                         
+        if SongsPage.select.mode:                                                                   #
+            controls1 = "[A] Previous page    [D] Next page                    [Enter] Select       "
+            controls2 = "[B] Edit details     [G] Delete song                  [ESC] Save & Exit    "
+        
+        
         sc.addstr(config.screenY-3, centerX(controls1), controls1)
         sc.addstr(config.screenY-2, centerX(controls2), controls2)
         sc.addstr(config.screenY-1, centerX(controls3), controls3)
         
-        if results.error: sc.addstr(centerY(), centerX("Page not found"), "Page not found")
+        if results.error:
+            if SongsPage.db == songsdb: sc.addstr(centerY(), centerX(SongsPage.error404), SongsPage.error404)
+            else: sc.addstr(centerY(), centerX(SongsPage.search404), SongsPage.search404)
+        
         stats = f"Page: {SongsPage.page} - Showing {len(results.content)} out of {len(SongsPage.db.content)} results"
         sc.addstr(3, centerX(stats), stats)
         
@@ -426,7 +444,8 @@ class SongsPage:
         sc.addstr(5, centerXint(20)+15, "ALBUM", curses.A_REVERSE)
         sc.addstr(5, centerXint(8)+30, "DURATION", curses.A_REVERSE)
         for x in range(len(results.content)):
-            if results.content.index( results.content[x] ) == SongsPage.selected: highlight = curses.A_REVERSE
+            if results.content.index( results.content[x] ) == SongsPage.selected or (
+                SongsPage.select.mode and results.content[x] in SongsPage.select.output): highlight = curses.A_REVERSE
             else: highlight = curses.A_BOLD
                 
             r = results.content[x]
@@ -487,13 +506,14 @@ class SongsPage:
             
             SongsPage.selected = 0
             songsdb.delete(song)
-        if char == 32: #Space
+        
+        if char == 32 and SongsPage.select.mode == False: #Space
             MusicPlayerPage.queue.append(results[selected])
-        if char in [10, 459]: #Enter
+        if char in [10, 459] and SongsPage.select.mode == False: #Enter
             MusicPlayerPage.playsong(results[selected].path)
             if config.playerOnSelect:
                 current.page = MusicPlayerPage
-        
+            
         if char in [120, 88]: #X
             path = simpledialog.askstring("AudioWave", "Path to mp3 file")
             if path == None:
@@ -535,18 +555,177 @@ class SongsPage:
             for song in songsdb.content:
                 if ( query.lower() in song.title.lower() or
                 query.lower() in song.artist.lower() or
-                query.lower() in song.album.lower() ):
+                query.lower() in song.album.lower() or 
+                query.lower() in song.path.lower() ):
                     searchdb.content.append(song)
                     
+        #---SELECT MODE---
+        if char in [10, 429] and SongsPage.select.mode: #enter
+            song = results[selected]
+            if song in SongsPage.select.output:
+                SongsPage.select.output.remove(song)
+            else:
+                SongsPage.select.output.append(song)       
+        if char in [27]: #esc
+            SongsPage.select.mode = False
+            SongsPage.select.callback(SongsPage.select.output)
+            current.page = SongsPage.select.return_page
             
             
-class PlaylistsPage:
+class PlaylistListPage:
+    page = 1
+    selected = 0
+    results_per_page = 10
+    db = playlistsdb
+    error404 = "You have no playlists, press [X] or [C] to create one"
+    search404 = "No results found"
+    
     def render(sc):
-        msg = "Playlists aren't working yet."
-        sc.addstr(centerY(), centerX(msg), msg)
+        PlaylistListPage.results_per_page = config.screenY - 10
+        results = PlaylistListPage.get_results()
+        if len(results.content) == 0 and not len(PlaylistListPage.db.content) == 0: PlaylistListPage.page -= 1
+        
+        controls1 = "[A] Previous page    [D] Next page                    [Enter] Play playlist"
+        controls2 = "[B] Edit details     [G] Delete playlist              [Space] Open playlist"
+        controls3 = "[X] Create playlist  [C] Add playlist from youtube    [F] Search           "
+        sc.addstr(config.screenY-3, centerX(controls1), controls1)
+        sc.addstr(config.screenY-2, centerX(controls2), controls2)
+        sc.addstr(config.screenY-1, centerX(controls3), controls3)
+    
+        if results.error:
+            if PlaylistListPage.db == playlistsdb: sc.addstr(centerY(), centerX(PlaylistListPage.error404), PlaylistListPage.error404)
+            else: sc.addstr(centerY(), centerX(PlaylistListPage.search404), PlaylistListPage.search404)    
+        
+        stats = f"Page: {PlaylistListPage.page} - Showing {len(results.content)} out of {len(PlaylistListPage.db.content)} results"
+        sc.addstr(3, centerX(stats), stats)
+        
+        sc.addstr(5, centerXint(25)-15, "NAME", curses.A_REVERSE)
+        sc.addstr(5, centerXint(15)+10, "SONGS", curses.A_REVERSE)
+        sc.addstr(5, centerXint(8)+15, "DURATION", curses.A_REVERSE)
+        for x in range(len(results.content)):
+            if results.content.index( results.content[x] ) == PlaylistListPage.selected: highlight = curses.A_REVERSE
+            else: highlight = curses.A_BOLD
+                
+            r = results.content[x]
+            sc.addstr(6+x, centerXint(25)-15, r.name[:24], highlight)
+            sc.addstr(6+x, centerXint(15)+10, str( len(r.songs) ), highlight)
+            sc.addstr(6+x,centerXint(8)+15, utils.to_minutes( utils.get_playlist_duration(r.songs) ), highlight)
+            
+        
+    def get_results(page=None):
+        if page == None: page = PlaylistListPage.page
+        results_per_page = PlaylistListPage.results_per_page
+        
+        cl = PlaylistListPage.db.content
+        pfac = results_per_page*(PlaylistListPage.page-1)
+        try: cl[pfac]
+        except IndexError: return item(content=[], error=True)
+        
+        output = []
+        for x in range(results_per_page):
+            p = pfac+x
+            try: c = cl[p]
+            except IndexError: break
+            output.append(c)
+        
+        return item(content=output, error=False)
+        
+
+    
+    def process_key(char):
+        results = PlaylistListPage.get_results().content
+        selected = PlaylistListPage.selected
+        if char == 258: #Down
+            if PlaylistListPage.selected + 1 >= len(results):
+                PlaylistListPage.selected = 0
+                return
+            PlaylistListPage.selected += 1
+        if char == 259: #Up
+            if PlaylistListPage.selected -1 < 0:
+                PlaylistListPage.selected = len(PlaylistListPage.get_results().content)-1 
+                return
+            PlaylistListPage.selected -= 1
+        
+        if char in [97, 67, 260]: #A/Left
+            if PlaylistListPage.page - 1 <= 0: return
+            PlaylistListPage.page -= 1
+            PlaylistListPage.selected = 0
+        if char in [100, 68, 261]: #D/Right
+            if PlaylistListPage.get_results(PlaylistListPage.page + 1).error: return
+            PlaylistListPage.page += 1
+            PlaylistListPage.selected = 0
+        if char in [98, 66]: #B
+            msgpage("Not yet", PlaylistListPage)
+            
+        if char in [103, 71, 330]: #G/Del
+            try: playlist = results[selected]
+            except IndexError: return
+            
+            PlaylistListPage.selected = 0
+            playlistsdb.delete(playlist)
+            
+        if char in [102, 70]: #F
+            if PlaylistListPage.db != playlistsdb:
+                PlaylistListPage.db = playlistsdb
+                return
+            
+            query = simpledialog.askstring("Search", "Prompt")
+            if query == None: return
+
+            searchdb = item(content=[])
+            PlaylistListPage.db = searchdb
+            
+            for p in playlistsdb.content:
+                if query.lower() in p.name.lower(): searchdb.content.append(p)
+            
+        if char in [120, 88]: #X            
+            SongsPage.select = item(mode=True, output = [], return_page = PlaylistListPage, callback = PlaylistListPage.create_playlist_callback)
+            current.page = SongsPage
+        
+        if char in [99, 67]: #C
+            msgpage("Feature unavailable", PlaylistListPage)
+            
+        if char == 32: #Space
+            PlaylistPage.open(results[selected])
+        if char in [10, 459]: #Enter
+            songs = []
+            for song in results[selected].songs:
+                song = songsdb.find("path", song)
+                if song != None: songs.append( song )
+                
+            if len(songs) == 0:
+                message("Unable to play: playlist is empty")
+                return
+                
+            MusicPlayerPage.queue_index = 0
+            MusicPlayerPage.queue = songs
+            MusicPlayerPage.playsong(songs[0].path)
+            if config.playerOnSelect: current.page = MusicPlayerPage
+            
+    def create_playlist_callback(songs):
+        if len(songs) == None:
+            message("Cancelled")
+            return
+        
+        name = simpledialog.askstring("AudioWave", "Playlist name")
+        if name in [None, ""]: name = "Unknown Playlist"
+        
+        song_paths = []
+        for s in songs:
+            song_paths.append(s.path)
+        
+        p = db.Item(name=name, songs=song_paths)
+        playlistsdb.add(p)
+        
+class PlaylistPage:
+    playlist = None
+    def open(playlist):
+        PlaylistPage.playlist = playlist
+        current.page = PlaylistPage
+        
+    def render(sc): pass
     
     def process_key(char): pass
-
     
 class WelcomePage:
     def render(sc):
@@ -582,15 +761,29 @@ class KeybindsPage:
             item(key="DOWN", desc="Move selection down"),
             item(key="Enter", desc="Play song"),
             item(key="Space", desc="Add song to queue"),
-            item(key="D", desc="Next page"),
-            item(key="A", desc="Previous page"),
-            item(key="G", desc="Delete song"),
+            item(key="D/RIGHT", desc="Next page"),
+            item(key="A/LEFT", desc="Previous page"),
+            item(key="G/DEL", desc="Delete song"),
             item(key="B", desc="Edit song details"),
             item(key="X", desc="Add song"),
-            item(key="V", desc="Add song from youtube"),
+            item(key="C", desc="Add song from youtube"),
             item(key="F", desc="Search/Close search results")
         ])
-    pages = [musicplayer, settings, songs]
+    playlists = item(name="Playlists",
+        keybinds = [
+            item(key="UP", desc="Move selection up"),
+            item(key="DOWN", desc="Move selection down"),
+            item(key="Enter", desc="Play playlist"),
+            item(key="Space", desc="Open playlist"),
+            item(key="D/RIGHT", desc="Next page"),
+            item(key="A/LEFT", desc="Previous page"),
+            item(key="G/DEL", desc="Delete playlist"),
+            item(key="B", desc="Edit playlist details"),
+            item(key="X", desc="Create playlist"),
+            item(key="F", desc="Search/Close search results"),
+            
+        ])
+    pages = [musicplayer, settings, songs, playlists]
     
     def render(sc):
         
@@ -632,7 +825,6 @@ class SongEditPage:
     
     def open(song):
         SongEditPage.song = song
-        SongEditPage.selected = 0
         SongEditPage.options = [
             item(value=song.title, attr="title"),
             item(value=song.artist, attr="artist"),
@@ -677,7 +869,7 @@ class SongEditPage:
             setattr(song, selected.attr, new_val)
             SongEditPage.open(song)
         if char in [27]: #escape
-            current.page = SongsPage
+            current.page = SongsPage        
 
 class InfoPage:
     def render(sc):
@@ -735,7 +927,7 @@ class current:
 categories = [
         category("Music Player", "E", [101, 69], MusicPlayerPage),
         category("Songs", "R", [114, 82], SongsPage),
-        category("Playlists", "T", [116, 84],PlaylistsPage),
+        category("Playlists", "T", [116, 84],PlaylistListPage),
         category("Settings", "S", [115, 83], SettingsPage),
         category("Exit", "Q", [113, 81], ExitPage)
     ]
