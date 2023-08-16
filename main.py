@@ -896,7 +896,7 @@ class KeybindsPage:
             item(key="C", desc="Add song from youtube"),
             item(key="F", desc="Search/Close search results")
         ])
-    playlists = item(name="Playlists",
+    playlists = item(name="Playlist list",
         keybinds = [
             item(key="UP", desc="Move selection up"),
             item(key="DOWN", desc="Move selection down"),
@@ -910,7 +910,18 @@ class KeybindsPage:
             item(key="F", desc="Search/Close search results"),
             
         ])
-    pages = [musicplayer, settings, songs, playlists]
+    playlistinfo = item(name="Playlist view",
+        keybinds = [
+            item(key="UP", desc="Move selection up"),
+            item(key="DOWN", desc="Move selection down"),
+            item(key="Enter", desc="Play song"),
+            item(key="D/RIGHT", desc="Next page"),
+            item(key="A/LEFT", desc="Previous page"),
+            item(key="G/DEL", desc="Remove song from playlist"),
+            item(key="B", desc="Edit song details"),
+            item(key="X", desc="Edit playlist"),
+        ])
+    pages = [musicplayer, settings, songs, playlists, playlistinfo]
     
     def render(sc):
         
