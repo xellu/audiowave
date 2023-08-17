@@ -1,5 +1,7 @@
 print("[AudioWave] Application is booting up...")
 
+#TODO: download playlist from youtube
+
 from dataforge import config as cfg
 from dataforge import database as db
 from dataforge import cache
@@ -306,12 +308,14 @@ class MusicPlayerPage:
                 MusicPlayerPage.status.duration = 0
             else: MusicPlayerPage.status.duration -= config.skipRadius
             player.seek(MusicPlayerPage.status.duration)
+            if MusicPlayerPage.status.paused: player.pause()
         if char in [100, 68]: #D
             max_duration = player.get_metadata().get("duration", 0)
             if MusicPlayerPage.status.duration + config.skipRadius > max_duration:
                 MusicPlayerPage.status.duration = max_duration
             else: MusicPlayerPage.status.duration += config.skipRadius
             player.seek(MusicPlayerPage.status.duration)
+            if MusicPlayerPage.status.paused: player.pause()
         
                 
                 
@@ -363,7 +367,7 @@ class SettingsPage:
     def render(sc):
         y = 4
         message()
-        for x in SettingsPage.options:
+        for x in SettingsPage.get_results():
             if x.type in ["int", "bool"]:
                 if SettingsPage.options.index(x) == SettingsPage.selected:
                     sc.addstr(y, 5, f"{x.label}: {x.value}", curses.A_REVERSE)
@@ -379,6 +383,17 @@ class SettingsPage:
                 else:
                     sc.addstr(y, 5, x.label)
             y += 1
+
+    def get_results():
+        if config.screenY - 5 - len(SettingsPage.options) < 0:
+            output = []
+            for i in range(config.screenY-5):
+                x = i+SettingsPage.selected
+                try:
+                    output.append(SettingsPage.options[x])
+                except IndexError: break
+            return output
+        else: return SettingsPage.options
             
     
     def process_key(char):
@@ -719,8 +734,53 @@ class PlaylistPage:
         
         PlaylistPage.playlist.songs = song_paths
         
+class PlaylistEditPage:
+    playlist = item(name="Unknown Playlist")
+    options = [
+        item(value=playlist.name, attr="name")
+    ]
+    selected = 0
+    
+    def open(playlist):
+        PlaylistEditPage.playlist = playlist
+        PlaylistEditPage.options = [
+            item(value=playlist.name, attr="name"),
+        ]
+        current.page = PlaylistEditPage
+    
+    def render(sc):    
+        controls = "[Enter] Edit   [ESC] Return"
+        sc.addstr(config.screenY-1, centerX(controls), controls)
         
-
+        sc.addstr(4,5, "NAME   ", curses.A_REVERSE)
+        for x in range(len(PlaylistEditPage.options)):
+            if PlaylistEditPage.selected == x: sc.addstr(4+x, 13, str(PlaylistEditPage.options[x].value), curses.A_REVERSE)
+            else: sc.addstr(4+x, 13, str(PlaylistEditPage.options[x].value))
+        
+        
+        
+    def process_key(char):
+        if PlaylistEditPage.playlist == None:
+            current.page = PlaylistListPage
+            return
+        
+        if char == 259: #down
+            if PlaylistEditPage.selected - 1 < 0: return
+            PlaylistEditPage.selected -= 1 
+        if char == 258: #up
+            if PlaylistEditPage.selected + 1 > len(PlaylistEditPage.options)-1: return
+            PlaylistEditPage.selected += 1
+        if char in [10, 459]: #enter
+            selected = PlaylistEditPage.options[PlaylistEditPage.selected]
+            new_val = simpledialog.askstring("AudioWave", selected.attr)
+            if new_val == None:
+                message("Cancelled")
+                return
+            playlist = playlistsdb.find("songs", PlaylistEditPage.playlist.songs)
+            setattr(playlist, selected.attr, new_val)
+            PlaylistEditPage.open(playlist)
+        if char in [27]: #escape
+            current.page = PlaylistListPage        
 class PlaylistListPage:
     page = 1
     selected = 0
@@ -804,7 +864,7 @@ class PlaylistListPage:
             PlaylistListPage.page += 1
             PlaylistListPage.selected = 0
         if char in [98, 66]: #B
-            msgpage("Not yet", PlaylistListPage)
+            PlaylistEditPage.open(results[selected])
             
         if char in [103, 71, 330]: #G/Del
             try: playlist = results[selected]
