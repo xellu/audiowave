@@ -54,9 +54,14 @@ class utils:
                 x.value = config.get(x.key)
         
     def to_minutes(seconds):
-        minutes = seconds // 60
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
         remaining_seconds = seconds % 60
+
+        if hours > 0:
+            return f"{int(hours)}:{int(minutes):02d}:{int(remaining_seconds):02d}"
         return f"{int(minutes)}:{int(remaining_seconds):02d}"
+
 
     @cache.use
     def get_duration(path):
