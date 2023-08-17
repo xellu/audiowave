@@ -20,7 +20,7 @@ startup_requirements.require(
         error_message = "[!] Application unable, because %file% is missing. re-run setup and try again. If the issue persists report this issue here: https://github.com/xellu/audiowave/issues"
     )
 
-version = "1.0.0"
+version = "1.1.0"
 config = cfg.Config("config.json")
 songsdb = db.Database("songs", logging=False)
 playlistsdb = db.Database("playlists", logging=False)
