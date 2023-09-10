@@ -2,7 +2,4 @@ config.json
 songs/*
 songs.df.json
 playlists.df.json
-engine/__pycache__
-engine/__pycache__/*
-dataforge/__pycache__
-dataforge/__pycache__/*
+__pycache__/
