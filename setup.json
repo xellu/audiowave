@@ -1,38 +1,39 @@
 [
     {
         "action": "MAKEDIR",
-        "path": "songs",
+        "path": "storage",
         "message": "Creating working directory"
     },
     {
+        "action": "MAKEDIR",
+        "path": "storage/downloads",
+        "message": "Creating downloads directory"
+    },
+    {
         "action": "MAKECONFIG",
-        "path": "config.json",
+        "path": "storage/config.json",
         "template": {
-            "screenX": 120,
-            "screenY": 28,
-            "timeformat": "%H:%M:%S",
-            "exitPrompt": true,
-            "volume": 20,
-            "welcomeScreen": true,
-            "progressBarIcon": "\u25c9",
-            "playerOnSelect": true,
-            "musicShuffle": false,
-            "musicLoop": false,
-            "audioFade": true,
-            "skipRadius": 3
+            "ScreenX": 120,
+            "ScreenY": 28,
+            "Theme": {
+                "primary": "RED",
+                "success": "GREEN",
+                "warning": "YELLOW",
+                "error": "RED"
+            }
         },
         "message": "Creating configuration files"
     },
     {
         "action": "MAKEDB",
-        "name": "playlists",
+        "name": "storage/playlists",
         "logging": false,
         "content": [],
         "message": "Creating storage file"
     },
     {
         "action": "MAKEDB",
-        "name": "songs",
+        "name": "storage/tracks",
         "logging": false,
         "content": [],
         "message": "Creating storage file"

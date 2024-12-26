@@ -1,5 +1,5 @@
 config.json
 songs/*
-songs.df.json
-playlists.df.json
+songs.json
+playlists.json
 __pycache__/

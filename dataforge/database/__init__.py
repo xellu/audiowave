@@ -9,8 +9,8 @@ Item = engine.item
 
 #DB
 class Database:
-    def __init__(self, name, logging = True, debug = False):
-        self.name = name + ".df.json"
+    def __init__(self, name, logging = False, debug = False):
+        self.name = name + ".json"
         self.content = []
         self.logging = logging
         self.debug = debug
