@@ -1,5 +1,2 @@
-config.json
-songs/*
-songs.json
-playlists.json
+storage
 __pycache__/

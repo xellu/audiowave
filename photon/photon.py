@@ -119,6 +119,10 @@ class Photon:
             
             #update
             sc.refresh()
+        
+        sc.erase()
+        sc.refresh()
+        os._exit(0)
            
     #KEY LISTENERS -----------------
             
@@ -132,13 +136,15 @@ class Photon:
             
             try:
                 if type(self.root) != None:
-                    self.root.on_input(key)
+                    response = self.root.on_input(key)
+                    if type(response) == dict and response.get("prevent_input"): continue
+                    
             except Exception as e:
                 self.em.call("on_error", self, f"INPUT ERROR: (root) {e}")
             
             try:
                 if type(self.page).__base__ == Page:
-                    self.page.on_input(key)
+                    response =self.page.on_input(key)
                 else:
                     self.em.call("on_error", self, "INPUT ERROR: page must be an instance of photon.Page")
                     raise UserWarning("INPUT ERROR: page must be an instance of photon.Page")

@@ -2,7 +2,7 @@ from ..page import Page
 from ..theme import Variants
 from ..core import theme
 from .. import utils
-from ..keymap import get_key
+from ..keymap import get_key, prevent_input
 
 import curses
 
@@ -101,13 +101,16 @@ class Input(Page):
 
         if key == "backspace":
             self.value = self.value[:-1]
-            return
+            return prevent_input()
 
         if key == "enter":
             if self.callback:
                 self.callback(self.value)
                 curses.curs_set(0)
+                return prevent_input()
 
         if len(key) == 1 and _key > 31:
             self.value += key
-            return
+            return prevent_input()
+        
+        return prevent_input()

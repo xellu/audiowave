@@ -99,3 +99,6 @@ KEY_MAP = {
 
 def get_key(key):
     return KEY_MAP.get(str(key), chr(key))
+
+def prevent_input(): #idk just makes the code look cleaner, even tho its an abomination either way
+    return {"prevent_input": True}
