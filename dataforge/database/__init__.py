@@ -15,9 +15,6 @@ class Database:
         self.logging = logging
         self.debug = debug
         
-        if self.name not in os.listdir():
-            open(self.name, "x").write("[]")
-        
         self.load()
         log.info("INSTANCE CREATED", db=self)
     
