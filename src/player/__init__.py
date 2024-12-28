@@ -1,10 +1,11 @@
 import pygame
 import time
 from threading import Thread
+from ..core import Config
 
 class AudioPlayer:
     def __init__(self):
-        self.volume = 100
+        self.volume = Config.Volume
         self.queue = {
             "index": 0,
             "queue": []
@@ -13,7 +14,7 @@ class AudioPlayer:
         self.now_playing = {
             "song": None,
             "elapsed": 0, #in seconds
-            "paused": False,
+            "paused": True,
             
             "evl_time": 0,
         }
@@ -23,6 +24,9 @@ class AudioPlayer:
     def set_volume(self, volume):
         self.volume = volume
         pygame.mixer_music.set_volume(volume / 100)
+
+        Config.Volume = volume
+        Config.save()
     
     def stop(self):
         self.running = False
@@ -54,13 +58,23 @@ class AudioPlayer:
         pygame.mixer_music.load(song.path)
         
         self.now_playing["song"] = song
-        self.now_playing["progress"] = 0
+        self.now_playing["elapsed"] = 0
+        self.now_playing["paused"] = False
+        
         self.queue["index"] += 1
         
         pygame.mixer_music.play()
         
     def play(self, song):
-        self.queue["queue"].append(song)
+        if pygame.mixer_music.get_busy():
+            pygame.mixer_music.stop()
+        
+        self.now_playing["song"] = song
+        self.now_playing["elapsed"] = 0
+        self.now_playing["paused"] = False
+        
+        pygame.mixer_music.load(song.path)
+        pygame.mixer_music.play()
         
     def resume(self):
         pygame.mixer_music.unpause()
@@ -73,11 +87,13 @@ class AudioPlayer:
     def seek(self, seconds):
         pygame.mixer_music.play()
         pygame.mixer_music.set_pos(seconds)
+        self.now_playing["elapsed"] = seconds
         
     def skip(self, seconds):
         """use negative seconds to rewind"""
         pygame.mixer_music.play()
         pygame.mixer_music.set_pos(pygame.mixer_music.get_pos() + seconds)
+        self.now_playing["elapsed"] += seconds
         
 Player = AudioPlayer()
 Player.start()

@@ -16,12 +16,16 @@ from .pages import (
     home,
     tracks,
     playlists,
+    
+    settings,
 )
 
 PAGES = [
     home.Home,
     tracks.Tracks,
     playlists.Playlists,
+    
+    settings.Settings
 ]
 
 app = Photon(

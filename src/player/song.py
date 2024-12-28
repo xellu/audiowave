@@ -4,7 +4,7 @@ from dataforge import console
 class Song:
     def __init__(self,
         title: str | None = None,
-        artist: str | list[str] | None = None,
+        artist: str | None = None,
         album: str | None = None,
         path: str | None = None       
     ):
